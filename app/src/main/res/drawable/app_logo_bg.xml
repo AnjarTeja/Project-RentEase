@@ -1,0 +1,75 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Main Circle Background -->
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M 100 100 m -95 0 a 95 95 0 1 1 190 0 a 95 95 0 1 1 -190 0" />
+
+    <!-- Outer Border Ring -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="2"
+        android:pathData="M 100 100 m -90 0 a 90 90 0 1 1 180 0 a 90 90 0 1 1 -180 0" />
+
+    <!-- Inner Glow Circle -->
+    <path
+        android:fillColor="#00d9ff"
+        android:alpha="0.15"
+        android:pathData="M 100 100 m -80 0 a 80 80 0 1 1 160 0 a 80 80 0 1 1 -160 0" />
+
+    <!-- Decorative Corner Elements -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1.5"
+        android:alpha="0.6"
+        android:pathData="M 30 30 L 50 30 M 30 30 L 30 50" />
+
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1.5"
+        android:alpha="0.6"
+        android:pathData="M 170 30 L 150 30 M 170 30 L 170 50" />
+
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1.5"
+        android:alpha="0.6"
+        android:pathData="M 30 170 L 50 170 M 30 170 L 30 150" />
+
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1.5"
+        android:alpha="0.6"
+        android:pathData="M 170 170 L 150 170 M 170 170 L 170 150" />
+
+    <!-- Decorative Side Lines -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1"
+        android:alpha="0.3"
+        android:pathData="M 15 100 L 35 100" />
+
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1"
+        android:alpha="0.3"
+        android:pathData="M 165 100 L 185 100" />
+
+    <!-- Center Dot -->
+    <path
+        android:fillColor="#00d9ff"
+        android:alpha="0.5"
+        android:pathData="M 100 100 m -2.5 0 a 2.5 2.5 0 1 1 5 0 a 2.5 2.5 0 1 1 -5 0" />
+
+</vector>

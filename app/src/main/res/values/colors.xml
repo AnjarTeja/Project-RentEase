@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- Tech Theme - Primary Colors -->
+    <color name="primary_color">#00d9ff</color>
+    <color name="primary_dark">#007a99</color>
+    <color name="primary_light">#4dffff</color>
+    <color name="primary_accent">#1a1a2e</color>
+    
+    <!-- Dark Tech Theme -->
+    <color name="tech_dark_bg">#0f0f1e</color>
+    <color name="tech_card_bg">#1a1a2e</color>
+    <color name="tech_surface">#262641</color>
+    <color name="tech_navy">#16213e</color>
+    
+    <!-- Text Colors -->
+    <color name="text_dark">#ffffff</color>
+    <color name="text_light">#b0b0c0</color>
+    <color name="text_hint">#808090</color>
+    <color name="text_secondary">#999aaa</color>
+    
+    <!-- Background Colors -->
+    <color name="background_light">#0f0f1e</color>
+    <color name="background_white">#1a1a2e</color>
+    
+    <!-- Status Colors -->
+    <color name="success_color">#00ff88</color>
+    <color name="error_color">#ff4466</color>
+    <color name="warning_color">#ffaa00</color>
+
+    <!-- Additional Accent Colors -->
+    <color name="purple_accent">#bb66ff</color>
+    <color name="divider_color">#2a2a4a</color>
+    <color name="card_pressed">#252545</color>
+</resources>

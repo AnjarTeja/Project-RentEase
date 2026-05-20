@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/splash_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/splash_gradient_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp">
+
+    <ImageView
+        android:id="@+id/app_name_text"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:contentDescription="@string/app_logo"
+        android:scaleType="fitCenter"
+        android:src="@drawable/logo_aplikasi" />
+
+</LinearLayout>

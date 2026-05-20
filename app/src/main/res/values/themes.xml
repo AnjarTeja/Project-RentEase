@@ -1,0 +1,45 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme with Tech Dark Mode -->
+    <style name="Base.Theme.RentEase" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Customize dark theme colors -->
+        <item name="colorPrimary">@color/primary_color</item>
+        <item name="colorPrimaryContainer">@color/primary_dark</item>
+        <item name="colorPrimaryInverse">@color/primary_accent</item>
+        <item name="colorSecondary">@color/primary_light</item>
+        <item name="colorSecondaryContainer">@color/tech_surface</item>
+        <item name="colorTertiary">@color/primary_color</item>
+        <item name="colorTertiaryContainer">@color/tech_card_bg</item>
+        
+        <!-- Background colors -->
+        <item name="android:colorBackground">@color/tech_dark_bg</item>
+        <item name="colorSurfaceDim">@color/tech_navy</item>
+        <item name="colorSurface">@color/tech_card_bg</item>
+        <item name="colorSurfaceVariant">@color/tech_surface</item>
+        <item name="colorSurfaceInverse">@color/white</item>
+        
+        <!-- Text colors -->
+        <item name="colorOnPrimary">@color/tech_dark_bg</item>
+        <item name="colorOnPrimaryContainer">@color/primary_color</item>
+        <item name="colorOnSecondary">@color/tech_dark_bg</item>
+        <item name="colorOnSecondaryContainer">@color/primary_light</item>
+        <item name="colorOnTertiary">@color/tech_dark_bg</item>
+        <item name="colorOnTertiaryContainer">@color/primary_color</item>
+        <item name="colorOnBackground">@color/text_dark</item>
+        <item name="colorOnSurface">@color/text_dark</item>
+        <item name="colorOnSurfaceVariant">@color/text_light</item>
+    </style>
+
+    <style name="Theme.RentEase" parent="Base.Theme.RentEase" />
+
+    <!-- Theme specifically for Splash Screen to prevent "Double Splash" on Android 12+ -->
+    <style name="Theme.RentEase.Splash" parent="Theme.RentEase">
+        <!-- Make the window background match our splash screen background -->
+        <item name="android:windowBackground">@drawable/splash_gradient_background</item>
+        
+        <!-- For Android 12+, make the system splash background match ours -->
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/tech_dark_bg</item>
+        
+        <!-- Hide the default Android 12+ app icon so it doesn't clash with our custom layout -->
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@android:color/transparent</item>
+    </style>
+</resources>

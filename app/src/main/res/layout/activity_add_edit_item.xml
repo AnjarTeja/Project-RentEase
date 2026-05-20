@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/add_edit_item_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_light"
+    android:orientation="vertical">
+
+    <!-- Top Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_header_petugas"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp">
+
+        <ImageButton
+            android:id="@+id/back_button"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Kembali"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_back_arrow" />
+
+        <TextView
+            android:id="@+id/tv_activity_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="Form Barang"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp"
+            android:paddingTop="24dp"
+            android:paddingBottom="32dp">
+
+            <!-- Photo Input -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Foto Barang"
+                android:textColor="@color/text_light"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="20dp">
+
+                <!-- Image Preview -->
+                <FrameLayout
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:layout_marginEnd="16dp"
+                    android:background="@drawable/bg_stat_card">
+
+                    <ImageView
+                        android:id="@+id/iv_item_photo"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:clipToOutline="true" />
+                        
+                    <ImageView
+                        android:id="@+id/iv_photo_placeholder"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_inventory"
+                        android:tint="@color/text_light" />
+                </FrameLayout>
+
+                <!-- Pick Button -->
+                <TextView
+                    android:id="@+id/btn_pick_photo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_stat_card"
+                    android:gravity="center"
+                    android:paddingHorizontal="16dp"
+                    android:text="Pilih Foto"
+                    android:textColor="@color/primary_color"
+                    android:textSize="13sp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground" />
+            </LinearLayout>
+
+            <!-- Name Input -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nama Barang"
+                android:textColor="@color/text_light"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/et_item_name"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_search_bar"
+                android:hint="Misal: Kamera Canon DSLR"
+                android:textColorHint="@color/text_hint"
+                android:textColor="@color/white"
+                android:paddingHorizontal="16dp"
+                android:textSize="14sp"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Description Input -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deskripsi Singkat"
+                android:textColor="@color/text_light"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/et_item_desc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="100dp"
+                android:gravity="top|start"
+                android:background="@drawable/bg_search_bar"
+                android:hint="Deskripsi kondisi barang, kelengkapan..."
+                android:textColorHint="@color/text_hint"
+                android:textColor="@color/white"
+                android:padding="16dp"
+                android:inputType="textMultiLine"
+                android:textSize="14sp"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Price Input -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Harga Sewa (per Hari)"
+                android:textColor="@color/text_light"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/et_item_price"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_search_bar"
+                android:hint="Misal: 50000"
+                android:textColorHint="@color/text_hint"
+                android:textColor="@color/white"
+                android:paddingHorizontal="16dp"
+                android:inputType="numberDecimal"
+                android:textSize="14sp"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Stock Input -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Stok Barang"
+                android:textColor="@color/text_light"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/et_item_stock"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_search_bar"
+                android:hint="Misal: 1"
+                android:textColorHint="@color/text_hint"
+                android:textColor="@color/white"
+                android:paddingHorizontal="16dp"
+                android:inputType="number"
+                android:textSize="14sp"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Status Selection -->
+            <TextView
+                android:id="@+id/tv_status_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Status Barang"
+                android:textColor="@color/text_light"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Spinner container -->
+            <LinearLayout
+                android:id="@+id/ll_status_container"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_search_bar"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="12dp"
+                android:layout_marginBottom="32dp">
+                
+                <Spinner
+                    android:id="@+id/spinner_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:backgroundTint="@color/primary_color"
+                    android:popupElevation="4dp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- Save Button -->
+            <TextView
+                android:id="@+id/btn_save_item"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:background="@drawable/bg_btn_approve"
+                android:gravity="center"
+                android:text="Simpan Data Barang"
+                android:textColor="@color/success_color"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground" />
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

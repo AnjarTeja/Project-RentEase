@@ -1,0 +1,114 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Main Circle Background -->
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M 100 100 m -90 0 a 90 90 0 1 1 180 0 a 90 90 0 1 1 -180 0" />
+
+    <!-- Outer Ring/Border -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="2.5"
+        android:pathData="M 100 100 m -85 0 a 85 85 0 1 1 170 0 a 85 85 0 1 1 -170 0" />
+
+    <!-- Inner accent circle (glow effect) -->
+    <path
+        android:fillColor="#00d9ff"
+        android:alpha="0.1"
+        android:pathData="M 100 100 m -80 0 a 80 80 0 1 1 160 0 a 80 80 0 1 1 -160 0" />
+
+    <!-- Smartphone Icon Top-Left -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1.8"
+        android:pathData="M 45 35 L 65 35 Q 68 35 68 38 L 68 82 Q 68 85 65 85 L 45 85 Q 42 85 42 82 L 42 38 Q 42 35 45 35 Z" />
+
+    <!-- Smartphone screen detail -->
+    <path
+        android:fillColor="#00d9ff"
+        android:alpha="0.15"
+        android:pathData="M 46 38 L 64 38 L 64 80 L 46 80 Z" />
+
+    <!-- Laptop Icon Top-Right -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1.8"
+        android:pathData="M 132 40 L 158 40 Q 160 40 160 42 L 160 65 Q 160 67 158 67 L 132 67 Q 130 67 130 65 L 130 42 Q 130 40 132 40 Z" />
+
+    <!-- Laptop screen detail -->
+    <path
+        android:fillColor="#00d9ff"
+        android:alpha="0.15"
+        android:pathData="M 134 43 L 156 43 L 156 64 L 134 64 Z" />
+
+    <!-- Laptop stand -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1.5"
+        android:pathData="M 128 68 L 160 68" />
+
+    <!-- Camera Icon Bottom-Left -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1.8"
+        android:pathData="M 45 130 L 65 130 Q 68 130 68 133 L 68 158 Q 68 161 65 161 L 45 161 Q 42 161 42 158 L 42 133 Q 42 130 45 130 Z" />
+
+    <!-- Camera lens -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1.5"
+        android:pathData="M 56 140 m -8 0 a 8 8 0 1 1 16 0 a 8 8 0 1 1 -16 0" />
+
+    <!-- Camera lens inner detail -->
+    <path
+        android:fillColor="#00d9ff"
+        android:alpha="0.2"
+        android:pathData="M 56 140 m -5 0 a 5 5 0 1 1 10 0 a 5 5 0 1 1 -10 0" />
+
+    <!-- Center Circle with "RE" text area -->
+    <path
+        android:fillColor="#00d9ff"
+        android:alpha="0.2"
+        android:pathData="M 100 100 m -45 0 a 45 45 0 1 1 90 0 a 45 45 0 1 1 -90 0" />
+
+    <!-- Inner highlight -->
+    <path
+        android:fillColor="#00d9ff"
+        android:alpha="0.08"
+        android:pathData="M 100 100 m -40 0 a 40 40 0 1 1 80 0 a 40 40 0 1 1 -80 0" />
+
+    <!-- Connection line to phone -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1"
+        android:alpha="0.4"
+        android:pathData="M 68 58 L 85 80" />
+
+    <!-- Connection line to laptop -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1"
+        android:alpha="0.4"
+        android:pathData="M 132 60 L 115 85" />
+
+    <!-- Connection line to camera -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00d9ff"
+        android:strokeWidth="1"
+        android:alpha="0.4"
+        android:pathData="M 68 140 L 85 115" />
+
+</vector>

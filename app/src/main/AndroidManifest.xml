@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.RentEase">
+        <activity
+            android:name=".SplashScreenActivity"
+            android:theme="@style/Theme.RentEase.Splash"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".LoginActivity"
+            android:exported="true" />
+        <activity
+            android:name=".RegisterActivity"
+            android:exported="true" />
+        <activity
+            android:name=".DashboardActivity"
+            android:exported="true" />
+        <activity
+            android:name=".DashboardPetugasActivity"
+            android:exported="true" />
+        <activity
+            android:name=".DashboardAdminActivity"
+            android:exported="true" />
+        <activity
+            android:name=".MainActivity"
+            android:exported="true" />
+        <activity
+            android:name=".VerifyRentalActivity"
+            android:exported="true" />
+        <activity
+            android:name=".ViewReportsActivity"
+            android:exported="true" />
+        <activity
+            android:name=".ManageItemsActivity"
+            android:exported="true" />
+        <activity
+            android:name=".UserComplaintsActivity"
+            android:exported="true" />
+        <activity
+            android:name=".ProfilePetugasActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AddEditItemActivity"
+            android:exported="false" />
+        <activity
+            android:name=".VerifyUserItemsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ManageReturnsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ProfileUserActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ItemDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".BrowseItemsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MyTransactionsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".MyItemsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".HistoryActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".HelpActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".CustomerServiceActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".TicketDetailActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+    </application>
+
+</manifest>
