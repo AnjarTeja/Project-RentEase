@@ -62,7 +62,9 @@ class DashboardAdminActivity : AppCompatActivity() {
         )
 
         findViewById<LinearLayout>(R.id.profile_section_btn).setOnClickListener {
-            showLogoutDialog()
+            val intent = Intent(this, ProfileAdminActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
     }
 

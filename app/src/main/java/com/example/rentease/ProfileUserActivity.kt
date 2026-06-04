@@ -211,13 +211,13 @@ class ProfileUserActivity : AppCompatActivity() {
         }
 
         db.collection("users").document(userId)
-            .update(updates)
+            .set(updates, com.google.firebase.firestore.SetOptions.merge())
             .addOnSuccessListener {
                 Toast.makeText(this, "Profil berhasil diperbarui", Toast.LENGTH_SHORT).show()
                 loadProfileData() // Reload UI
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Gagal memperbarui profil", Toast.LENGTH_SHORT).show()
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Gagal: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
     }
 

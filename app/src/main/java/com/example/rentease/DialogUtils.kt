@@ -94,4 +94,25 @@ object DialogUtils {
 
         dialog.show()
     }
+
+    /**
+     * Show a beautiful, uncancelable loading dialog
+     */
+    fun showLoadingDialog(activity: Activity, message: String = "Harap tunggu sebentar"): AlertDialog {
+        val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_loading, null)
+        val dialog = AlertDialog.Builder(activity)
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
+        val tvMessage = dialogView.findViewById<TextView>(R.id.tv_loading_text)
+        if (tvMessage != null) {
+            tvMessage.text = message
+        }
+
+        dialog.show()
+        return dialog
+    }
 }

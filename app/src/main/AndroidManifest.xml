@@ -54,6 +54,10 @@
             android:name=".ProfilePetugasActivity"
             android:exported="false" />
         <activity
+            android:name=".ProfileAdminActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+        <activity
             android:name=".AddEditItemActivity"
             android:exported="false" />
         <activity
