@@ -8,9 +8,11 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 
 class DashboardAdminActivity : AppCompatActivity() {
@@ -33,6 +35,40 @@ class DashboardAdminActivity : AppCompatActivity() {
         setupProfileHeader()
         setupMenuButtons()
         loadStats()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Reload profile data and stats whenever activity comes back to focus
+        refreshProfileHeader()
+        loadStats()
+    }
+
+    private fun refreshProfileHeader() {
+        val userNameDisplay = findViewById<TextView>(R.id.user_name_display_admin)
+        
+        firebaseAuthManager.getUserData(
+            onSuccess = { userData ->
+                val userName = userData["name"] as? String ?: "Administrator"
+                userNameDisplay.text = userName
+                
+                // Update profile image if exists
+                val profileImageUrl = userData["profileImageUrl"] as? String
+                if (!profileImageUrl.isNullOrEmpty()) {
+                    val ivAvatar = findViewById<ImageView>(R.id.iv_dashboard_avatar)
+                    val ivPlaceholder = findViewById<ImageView>(R.id.iv_dashboard_avatar_placeholder)
+                    try {
+                        ivAvatar.setImageURI(android.net.Uri.parse(profileImageUrl))
+                        ivPlaceholder.visibility = View.GONE
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            },
+            onFailure = { 
+                userNameDisplay.text = "Administrator"
+            }
+        )
     }
 
     private fun setupProfileHeader() {
@@ -115,15 +151,36 @@ class DashboardAdminActivity : AppCompatActivity() {
         }
     }
 
-    private fun showLogoutDialog() {
-        DialogUtils.showConfirmationDialog(
-            activity = this,
-            title = "Logout Admin",
-            message = "Apakah Anda yakin ingin keluar dari panel Administrator?",
-            positiveButtonText = "Ya, Keluar"
-        ) {
-            logout()
+    private fun showExitDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_confirmation, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        // Set content for Exit
+        dialogView.findViewById<TextView>(R.id.dialog_title).text = "Keluar Aplikasi"
+        dialogView.findViewById<TextView>(R.id.dialog_message).text = "Apakah Anda yakin ingin keluar dari aplikasi RentEase?"
+        
+        val btnNo = dialogView.findViewById<MaterialButton>(R.id.btn_no)
+        val btnYes = dialogView.findViewById<MaterialButton>(R.id.btn_yes)
+        
+        btnNo.text = "Batal"
+        btnYes.text = "Ya, Keluar"
+
+        btnNo.setOnClickListener { dialog.dismiss() }
+        btnYes.setOnClickListener {
+            dialog.dismiss()
+            finishAffinity()
         }
+
+        // Set Warning color for exit
+        btnYes.setBackgroundColor(getColor(R.color.warning_color))
+        dialogView.findViewById<View>(R.id.dialog_icon_bg).setBackgroundResource(R.drawable.bg_icon_circle_orange)
+        
+        dialog.show()
     }
 
     private fun logout() {
@@ -136,6 +193,6 @@ class DashboardAdminActivity : AppCompatActivity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        showLogoutDialog()
+        showExitDialog()
     }
 }
