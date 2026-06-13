@@ -35,6 +35,7 @@ class AddEditItemActivity : AppCompatActivity() {
     private lateinit var etPrice: EditText
     private lateinit var etStock: EditText
     private lateinit var spinnerStatus: Spinner
+    private lateinit var spinnerCategory: Spinner
     private lateinit var tvTitle: TextView
     private lateinit var btnSave: TextView
     private lateinit var backButton: ImageButton
@@ -75,6 +76,7 @@ class AddEditItemActivity : AppCompatActivity() {
 
         initializeViews()
         setupSpinner()
+        setupCategorySpinner()
         setupListeners()
 
         if (isUser) {
@@ -100,6 +102,7 @@ class AddEditItemActivity : AppCompatActivity() {
         etPrice = findViewById(R.id.et_item_price)
         etStock = findViewById(R.id.et_item_stock)
         spinnerStatus = findViewById(R.id.spinner_status)
+        spinnerCategory = findViewById(R.id.spinner_category)
         btnSave = findViewById(R.id.btn_save_item)
         backButton = findViewById(R.id.back_button)
     }
@@ -109,6 +112,13 @@ class AddEditItemActivity : AppCompatActivity() {
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, statuses)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnerStatus.adapter = adapter
+    }
+
+    private fun setupCategorySpinner() {
+        val categories = Item.CATEGORIES.toTypedArray()
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categories)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerCategory.adapter = adapter
     }
 
     private fun setupListeners() {
@@ -166,6 +176,10 @@ class AddEditItemActivity : AppCompatActivity() {
                         else -> 0
                     }
                     spinnerStatus.setSelection(pos)
+
+                    val category = document.getString("category") ?: Item.CATEGORY_OTHER
+                    val catPos = Item.CATEGORIES.indexOf(category).coerceAtLeast(0)
+                    spinnerCategory.setSelection(catPos)
                 } else {
                     Toast.makeText(this, "Barang tidak ditemukan", Toast.LENGTH_SHORT).show()
                     finish()
@@ -209,6 +223,7 @@ class AddEditItemActivity : AppCompatActivity() {
         }
 
         val approvalStatus = if (isUser) Item.APPROVAL_PENDING else Item.APPROVAL_APPROVED
+        val selectedCategory = Item.CATEGORIES[spinnerCategory.selectedItemPosition]
 
         btnSave.isEnabled = false
         btnSave.text = "Menyimpan..."
@@ -221,6 +236,7 @@ class AddEditItemActivity : AppCompatActivity() {
             "status" to statusValue,
             "imageUrl" to selectedImageUri,
             "approvalStatus" to approvalStatus,
+            "category" to selectedCategory,
             "updatedAt" to System.currentTimeMillis()
         )
 

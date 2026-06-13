@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.NumberFormat
 import java.util.Locale
@@ -44,16 +45,14 @@ class VerifyUserItemAdapter(
         format.maximumFractionDigits = 0
         holder.tvItemPrice.text = "${format.format(item.price)} / hari"
 
-        // Handle Image
+        // Handle Image with Glide
         if (item.imageUrl.isNotEmpty()) {
-            try {
-                holder.ivPhoto.setImageURI(Uri.parse(item.imageUrl))
-                holder.ivPlaceholder.visibility = View.GONE
-            } catch (e: Exception) {
-                e.printStackTrace()
-                holder.ivPhoto.setImageDrawable(null)
-                holder.ivPlaceholder.visibility = View.VISIBLE
-            }
+            Glide.with(holder.itemView.context)
+                .load(item.imageUrl)
+                .placeholder(R.drawable.bg_card_dark)
+                .error(R.drawable.bg_card_dark)
+                .into(holder.ivPhoto)
+            holder.ivPlaceholder.visibility = View.GONE
         } else {
             holder.ivPhoto.setImageDrawable(null)
             holder.ivPlaceholder.visibility = View.VISIBLE

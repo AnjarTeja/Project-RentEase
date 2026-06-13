@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_stat_card"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="16dp"
+    android:layout_marginBottom="8dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <!-- Avatar -->
+    <FrameLayout
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/bg_avatar_circle">
+
+        <TextView
+            android:id="@+id/tv_user_role"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="USER"
+            android:textColor="@color/primary_color"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+    <!-- Info -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_user_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Nama Pengguna"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_user_email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="email@example.com"
+            android:textColor="@color/text_light"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tv_user_date"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Bergabung: 01 Jan 2025"
+            android:textColor="@color/text_hint"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+</LinearLayout>

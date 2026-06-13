@@ -425,7 +425,48 @@
 
                         </LinearLayout>
 
-                        <!-- Item 5: Riwayat Sewa -->
+                        <!-- Item 5: Permintaan Sewa (Incoming Rentals for Owner) -->
+                        <LinearLayout
+                            android:id="@+id/menu_incoming_rentals"
+                            android:layout_width="110dp"
+                            android:layout_height="115dp"
+                            android:layout_marginEnd="10dp"
+                            android:background="@drawable/bg_card_dark"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:paddingVertical="14dp">
+
+                            <View
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/bg_icon_circle_cyan" />
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_marginTop="-30dp"
+                                android:src="@drawable/ic_transaction"
+                                app:tint="@color/white"
+                                android:contentDescription="Permintaan Sewa Icon" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="16dp"
+                                android:gravity="center"
+                                android:text="Permintaan Sewa"
+                                android:textColor="@color/white"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:maxLines="1"
+                                android:ellipsize="end" />
+
+                        </LinearLayout>
+
+                        <!-- Item 6: Riwayat Sewa -->
                         <LinearLayout
                             android:id="@+id/menu_history"
                             android:layout_width="110dp"

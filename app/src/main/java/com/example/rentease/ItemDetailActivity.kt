@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.NumberFormat
@@ -107,11 +108,11 @@ class ItemDetailActivity : AppCompatActivity() {
 
                     val ivImage = findViewById<ImageView>(R.id.iv_detail_image)
                     if (itemImageUrl.isNotEmpty()) {
-                        try {
-                            ivImage.setImageURI(Uri.parse(itemImageUrl))
-                        } catch (e: Exception) {
-                            ivImage.setImageResource(R.drawable.bg_card_dark)
-                        }
+                        Glide.with(this)
+                            .load(itemImageUrl)
+                            .placeholder(R.drawable.bg_card_dark)
+                            .error(R.drawable.bg_card_dark)
+                            .into(ivImage)
                     }
                 } else {
                     Toast.makeText(this, "Barang tidak ditemukan", Toast.LENGTH_SHORT).show()
@@ -160,6 +161,11 @@ class ItemDetailActivity : AppCompatActivity() {
                 val sdf = SimpleDateFormat("dd MMM yyyy", Locale("id", "ID"))
                 val startDate = sdf.format(Date())
 
+                // Calculate endDate based on duration
+                val calendar = java.util.Calendar.getInstance()
+                calendar.add(java.util.Calendar.DAY_OF_MONTH, duration)
+                val endDate = sdf.format(calendar.time)
+
                 val rentalRequest = RentalRequest(
                     itemName = itemName,
                     itemId = itemId,
@@ -168,6 +174,7 @@ class ItemDetailActivity : AppCompatActivity() {
                     renterId = renterId,
                     ownerId = itemOwnerId,
                     startDate = startDate,
+                    endDate = endDate,
                     duration = duration,
                     note = note,
                     status = RentalRequest.STATUS_PENDING,
@@ -180,6 +187,7 @@ class ItemDetailActivity : AppCompatActivity() {
                     .add(rentalRequest)
                     .addOnSuccessListener {
                         Toast.makeText(this, "Berhasil mengajukan sewa! Menunggu persetujuan petugas.", Toast.LENGTH_LONG).show()
+                        NotificationHelper.showOwnerRentalRequestNotification(this, renterName, itemName, duration)
                         finish()
                     }
                     .addOnFailureListener {

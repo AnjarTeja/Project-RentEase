@@ -239,6 +239,51 @@ class ManageItemsActivity : AppCompatActivity() {
     }
 
     private fun confirmDelete(item: Item) {
+        // Check for active or pending rentals before allowing deletion
+        firestore.collection("rentals")
+            .whereEqualTo("itemId", item.id)
+            .whereIn("status", listOf("pending", "approved"))
+            .get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.isEmpty) {
+                    // No active rentals, safe to delete
+                    showDeleteDialog(item)
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Tidak bisa menghapus '${item.name}' karena masih ada ${snapshot.size()} transaksi aktif/pending.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+            .addOnFailureListener {
+                // Fallback: fetch all and filter
+                firestore.collection("rentals")
+                    .whereEqualTo("itemId", item.id)
+                    .get()
+                    .addOnSuccessListener { allRentals ->
+                        val activeCount = allRentals.documents.count {
+                            val s = it.getString("status")
+                            s == "pending" || s == "approved"
+                        }
+                        if (activeCount == 0) {
+                            showDeleteDialog(item)
+                        } else {
+                            Toast.makeText(
+                                this,
+                                "Tidak bisa menghapus '${item.name}' karena masih ada $activeCount transaksi aktif/pending.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                    .addOnFailureListener {
+                        // If check fails, still allow delete as fallback
+                        showDeleteDialog(item)
+                    }
+            }
+    }
+
+    private fun showDeleteDialog(item: Item) {
         DialogUtils.showDangerDialog(
             activity = this,
             title = "Hapus Barang",

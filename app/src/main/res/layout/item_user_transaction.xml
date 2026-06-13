@@ -46,6 +46,17 @@
         android:textColor="@color/text_light"
         android:textSize="13sp" />
 
+    <TextView
+        android:id="@+id/tv_rating_display"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Tap untuk beri rating"
+        android:textColor="@color/primary_color"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
     <Button
         android:id="@+id/btn_return_item"
         android:layout_width="match_parent"

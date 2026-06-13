@@ -242,6 +242,7 @@ class VerifyRentalActivity : AppCompatActivity() {
                     batch.commit()
                         .addOnSuccessListener {
                             Toast.makeText(this, "Status berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                            NotificationHelper.showRentalStatusNotification(this, rental.itemName, newStatus)
                             loadRentalsFromFirestore() // Refresh current list
                         }
                         .addOnFailureListener { e ->
@@ -263,6 +264,7 @@ class VerifyRentalActivity : AppCompatActivity() {
             batch.commit()
                 .addOnSuccessListener {
                     Toast.makeText(this, "Status berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                    NotificationHelper.showRentalStatusNotification(this, rental.itemName, newStatus)
                     loadRentalsFromFirestore() // Refresh current list
                 }
                 .addOnFailureListener { e ->

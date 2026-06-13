@@ -60,6 +60,7 @@ class DashboardActivity : AppCompatActivity() {
         setupMenuListeners()
         setupItemsGrid()
         animateMenuIcons()
+        setupBackPressHandler()
     }
 
     override fun onResume() {
@@ -181,6 +182,12 @@ class DashboardActivity : AppCompatActivity() {
         // Barang Saya
         findViewById<LinearLayout>(R.id.menu_my_items).setOnClickListener {
             val intent = Intent(this, MyItemsActivity::class.java)
+            startActivity(intent)
+        }
+
+        // Permintaan Sewa (Incoming Rentals for Item Owner)
+        findViewById<LinearLayout>(R.id.menu_incoming_rentals).setOnClickListener {
+            val intent = Intent(this, IncomingRentalsActivity::class.java)
             startActivity(intent)
         }
 
@@ -325,7 +332,7 @@ class DashboardActivity : AppCompatActivity() {
     private fun animateMenuIcons() {
         val menus = listOf(
             R.id.menu_browse, R.id.menu_add_item, R.id.menu_my_transactions,
-            R.id.menu_my_items, R.id.menu_history, R.id.menu_help
+            R.id.menu_my_items, R.id.menu_incoming_rentals, R.id.menu_history, R.id.menu_help
         )
 
         menus.forEachIndexed { index, id ->
@@ -343,6 +350,14 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     // ===== EXIT DIALOG =====
+    private fun setupBackPressHandler() {
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                showExitDialog()
+            }
+        })
+    }
+
     private fun showExitDialog() {
         DialogUtils.showConfirmationDialog(
             activity = this,
@@ -352,10 +367,5 @@ class DashboardActivity : AppCompatActivity() {
         ) {
             finishAffinity()
         }
-    }
-
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-        showExitDialog()
     }
 }

@@ -196,6 +196,31 @@
                 android:textSize="14sp"
                 android:layout_marginBottom="20dp" />
 
+            <!-- Category Selection -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Kategori Barang"
+                android:textColor="@color/text_light"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_search_bar"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="12dp"
+                android:layout_marginBottom="20dp">
+
+                <Spinner
+                    android:id="@+id/spinner_category"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:backgroundTint="@color/primary_color"
+                    android:popupElevation="4dp" />
+            </LinearLayout>
+
             <!-- Status Selection -->
             <TextView
                 android:id="@+id/tv_status_label"

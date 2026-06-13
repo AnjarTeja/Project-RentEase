@@ -35,6 +35,7 @@ class DashboardAdminActivity : AppCompatActivity() {
         setupProfileHeader()
         setupMenuButtons()
         loadStats()
+        setupBackPressHandler()
     }
 
     override fun onResume() {
@@ -105,12 +106,19 @@ class DashboardAdminActivity : AppCompatActivity() {
     }
 
     private fun setupMenuButtons() {
+        // Manage Users - navigate to ManageUsersActivity
         findViewById<LinearLayout>(R.id.manage_users_btn).setOnClickListener {
-            Toast.makeText(this, "Panel Kelola User", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, ManageUsersActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
 
+        // Manage Staff - navigate to ManageUsersActivity (shows all users, staff management)
         findViewById<LinearLayout>(R.id.manage_staff_btn).setOnClickListener {
-            Toast.makeText(this, "Panel Kelola Petugas", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, ManageUsersActivity::class.java)
+            intent.putExtra("FILTER_STAFF", true)
+            startActivity(intent)
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
 
         findViewById<LinearLayout>(R.id.view_reports_btn).setOnClickListener {
@@ -119,12 +127,14 @@ class DashboardAdminActivity : AppCompatActivity() {
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
 
+        // System Statistics - show summary dialog
         findViewById<LinearLayout>(R.id.system_stats_btn).setOnClickListener {
-            Toast.makeText(this, "Statistik Global", Toast.LENGTH_SHORT).show()
+            showSystemStatsDialog()
         }
 
+        // System Settings - show settings info
         findViewById<LinearLayout>(R.id.system_settings_btn).setOnClickListener {
-            Toast.makeText(this, "Pengaturan Aplikasi", Toast.LENGTH_SHORT).show()
+            showSystemSettingsDialog()
         }
 
         findViewById<LinearLayout>(R.id.customer_service_btn).setOnClickListener {
@@ -132,6 +142,97 @@ class DashboardAdminActivity : AppCompatActivity() {
             startActivity(intent)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
+    }
+
+    private fun showSystemStatsDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_confirmation, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        dialogView.findViewById<TextView>(R.id.dialog_title).text = "Statistik Global"
+        dialogView.findViewById<TextView>(R.id.dialog_message).text = "Memuat statistik..."
+
+        val btnYes = dialogView.findViewById<MaterialButton>(R.id.btn_yes)
+        val btnNo = dialogView.findViewById<MaterialButton>(R.id.btn_no)
+        btnYes.text = "Tutup"
+        btnNo.visibility = android.view.View.GONE
+
+        btnYes.setOnClickListener { dialog.dismiss() }
+        dialogView.findViewById<android.view.View>(R.id.dialog_icon_bg).setBackgroundResource(R.drawable.bg_icon_circle_cyan)
+
+        dialog.show()
+
+        // Load stats asynchronously
+        var totalUsers = 0
+        var totalItems = 0
+        var totalRentals = 0
+        var pendingRentals = 0
+        var approvedRentals = 0
+        var returnedRentals = 0
+        var openTickets = 0
+        var loaded = 0
+        val totalQueries = 5
+
+        fun updateStats() {
+            loaded++
+            if (loaded == totalQueries) {
+                val revenue = approvedRentals * 50000 // Estimated
+                val stats = buildString {
+                    append("📊 Ringkasan Sistem RentEase\n\n")
+                    append("👥 Total Pengguna: $totalUsers\n")
+                    append("📦 Total Barang: $totalItems\n")
+                    append("📋 Total Transaksi: $totalRentals\n")
+                    append("   ⏳ Pending: $pendingRentals\n")
+                    append("   ✅ Disetujui: $approvedRentals\n")
+                    append("   🔄 Dikembalikan: $returnedRentals\n\n")
+                    append("🎫 Tiket Support Terbuka: $openTickets")
+                }
+                dialogView.findViewById<TextView>(R.id.dialog_message).text = stats
+            }
+        }
+
+        db.collection("users").get().addOnSuccessListener {
+            totalUsers = it.size()
+            updateStats()
+        }.addOnFailureListener { updateStats() }
+
+        db.collection("items").get().addOnSuccessListener {
+            totalItems = it.size()
+            updateStats()
+        }.addOnFailureListener { updateStats() }
+
+        db.collection("rentals").get().addOnSuccessListener {
+            totalRentals = it.size()
+            for (doc in it) {
+                when (doc.getString("status")) {
+                    "pending" -> pendingRentals++
+                    "approved" -> approvedRentals++
+                    "returned" -> returnedRentals++
+                }
+            }
+            updateStats()
+        }.addOnFailureListener { updateStats() }
+
+        db.collection("support_tickets").whereEqualTo("status", "open").get()
+            .addOnSuccessListener { openTickets = it.size(); updateStats() }
+            .addOnFailureListener { updateStats() }
+
+        // Additional query for completeness
+        db.collection("items").whereEqualTo("status", "available").get()
+            .addOnSuccessListener { updateStats() }
+            .addOnFailureListener { updateStats() }
+    }
+
+    private fun showSystemSettingsDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Pengaturan Aplikasi")
+            .setMessage("RentEase v1.0\n\n• Notifikasi: Aktif\n• Mode Offline: Aktif\n• Tema: Dark Tech\n\nPengaturan lebih lanjut akan tersedia di versi berikutnya.")
+            .setPositiveButton("Tutup") { d, _ -> d.dismiss() }
+            .show()
     }
 
     private fun loadStats() {
@@ -191,8 +292,11 @@ class DashboardAdminActivity : AppCompatActivity() {
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
     }
 
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-        showExitDialog()
+    private fun setupBackPressHandler() {
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                showExitDialog()
+            }
+        })
     }
 }

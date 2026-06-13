@@ -1,11 +1,15 @@
 package com.example.rentease
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -14,6 +18,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.GridLayoutManager
@@ -31,9 +36,14 @@ class BrowseItemsActivity : AppCompatActivity() {
     private lateinit var adapter: BrowseItemAdapter
     private lateinit var etSearch: EditText
     private lateinit var btnClearSearch: ImageButton
+    private lateinit var categoryChipsContainer: LinearLayout
 
     private val allItemList = mutableListOf<Item>()
     private val itemList = mutableListOf<Item>()
+
+    // Category filter state
+    private var selectedCategory: String? = null
+    private val categoryChips = mutableListOf<TextView>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +58,7 @@ class BrowseItemsActivity : AppCompatActivity() {
 
         initializeViews()
         setupRecyclerView()
+        setupCategoryChips()
         setupListeners()
     }
 
@@ -62,6 +73,7 @@ class BrowseItemsActivity : AppCompatActivity() {
         emptyState = findViewById(R.id.empty_state)
         etSearch = findViewById(R.id.et_search_items)
         btnClearSearch = findViewById(R.id.btn_clear_search)
+        categoryChipsContainer = findViewById(R.id.category_chips_container)
     }
 
     private fun setupRecyclerView() {
@@ -73,6 +85,70 @@ class BrowseItemsActivity : AppCompatActivity() {
 
         rvItems.layoutManager = GridLayoutManager(this, 2)
         rvItems.adapter = adapter
+    }
+
+    private fun setupCategoryChips() {
+        categoryChipsContainer.removeAllViews()
+        categoryChips.clear()
+
+        // "All" chip
+        val allChip = createChip("Semua", null)
+        categoryChipsContainer.addView(allChip)
+        categoryChips.add(allChip)
+
+        // Category chips
+        for (category in Item.CATEGORIES) {
+            val chip = createChip(category, category)
+            categoryChipsContainer.addView(chip)
+            categoryChips.add(chip)
+        }
+
+        // Select "Semua" by default
+        selectChip(allChip, null)
+    }
+
+    private fun createChip(label: String, category: String?): TextView {
+        val chip = TextView(this).apply {
+            text = label
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+            gravity = Gravity.CENTER
+            val params = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginEnd = dp(8)
+            }
+            layoutParams = params
+        }
+
+        chip.setOnClickListener {
+            selectedCategory = category
+            selectChip(chip, category)
+            applyFilters()
+        }
+
+        return chip
+    }
+
+    private fun selectChip(selectedChip: TextView, category: String?) {
+        for (chip in categoryChips) {
+            if (chip == selectedChip) {
+                chip.setBackgroundResource(R.drawable.bg_chip_selected)
+                chip.setTextColor(Color.WHITE)
+            } else {
+                chip.setBackgroundResource(R.drawable.bg_chip_unselected)
+                chip.setTextColor(ContextCompat.getColor(this, R.color.text_hint))
+            }
+        }
+    }
+
+    private fun dp(value: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            value.toFloat(),
+            resources.displayMetrics
+        ).toInt()
     }
 
     private fun setupListeners() {
@@ -91,7 +167,7 @@ class BrowseItemsActivity : AppCompatActivity() {
                 } else {
                     btnClearSearch.visibility = View.GONE
                 }
-                filterItems(query)
+                applyFilters()
             }
 
             override fun afterTextChanged(s: Editable?) {}
@@ -103,24 +179,28 @@ class BrowseItemsActivity : AppCompatActivity() {
         }
     }
 
-    private fun filterItems(query: String) {
+    private fun applyFilters() {
+        val query = etSearch.text.toString().trim().lowercase()
         itemList.clear()
-        if (query.isEmpty()) {
-            itemList.addAll(allItemList)
-        } else {
-            val lowerCaseQuery = query.lowercase()
-            for (item in allItemList) {
-                if (item.name.lowercase().contains(lowerCaseQuery) || 
-                    item.description.lowercase().contains(lowerCaseQuery)) {
-                    itemList.add(item)
-                }
+
+        for (item in allItemList) {
+            val matchesCategory = selectedCategory == null || item.category == selectedCategory
+            val matchesSearch = query.isEmpty() ||
+                item.name.lowercase().contains(query) ||
+                item.description.lowercase().contains(query)
+
+            if (matchesCategory && matchesSearch) {
+                itemList.add(item)
             }
         }
+
         adapter.updateData(itemList)
         
         if (itemList.isEmpty()) {
             emptyState.visibility = View.VISIBLE
-            findViewById<TextView>(R.id.tv_empty_message)?.text = "Barang '$query' tidak ditemukan"
+            findViewById<TextView>(R.id.tv_empty_message)?.text = 
+                if (query.isNotEmpty()) "Barang '$query' tidak ditemukan"
+                else "Tidak ada barang di kategori ini"
         } else {
             emptyState.visibility = View.GONE
         }
@@ -155,7 +235,8 @@ class BrowseItemsActivity : AppCompatActivity() {
                                 createdAt = doc.getLong("createdAt") ?: 0L,
                                 approvalStatus = approval ?: Item.APPROVAL_APPROVED,
                                 rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
-                                stock = (doc.getLong("stock") ?: 1L).toInt()
+                                stock = (doc.getLong("stock") ?: 1L).toInt(),
+                                category = doc.getString("category") ?: Item.CATEGORY_OTHER
                             )
                             allItemList.add(item)
                         }
@@ -167,11 +248,9 @@ class BrowseItemsActivity : AppCompatActivity() {
                 // Sort by most popular first
                 allItemList.sortByDescending { it.rentCount }
                 
-                itemList.addAll(allItemList)
+                applyFilters()
 
-                adapter.updateData(itemList)
                 progressBar.visibility = View.GONE
-
                 if (itemList.isEmpty()) {
                     emptyState.visibility = View.VISIBLE
                 } else {

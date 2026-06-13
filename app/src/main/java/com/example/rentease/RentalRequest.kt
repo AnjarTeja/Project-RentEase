@@ -22,7 +22,8 @@ data class RentalRequest(
     val updatedAt: Long = 0L,
     val note: String = "",
     val pricePerDay: Double = 0.0,
-    val itemImageUrl: String = ""
+    val itemImageUrl: String = "",
+    val rating: Int = 0  // 0 = not rated, 1-5 = star rating
 ) {
     companion object {
         const val STATUS_PENDING = "pending"

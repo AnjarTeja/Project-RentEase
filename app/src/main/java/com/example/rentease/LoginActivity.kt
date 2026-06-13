@@ -114,6 +114,65 @@ class LoginActivity : AppCompatActivity() {
         signupButton.setOnClickListener {
             navigateToRegister()
         }
+
+        // Forgot password click
+        val forgotPasswordButton = findViewById<TextView>(R.id.forgot_password_button)
+        forgotPasswordButton.setOnClickListener {
+            showForgotPasswordDialog()
+        }
+    }
+
+    private fun showForgotPasswordDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_forgot_password, null)
+        val etEmail = dialogView.findViewById<EditText>(R.id.et_reset_email)
+        
+        // Pre-fill with current email if available
+        val currentEmail = emailEditText.text.toString().trim()
+        if (currentEmail.isNotEmpty() && isValidEmail(currentEmail)) {
+            etEmail.setText(currentEmail)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val btnCancel = dialogView.findViewById<MaterialButton>(R.id.btn_cancel_reset)
+        val btnSend = dialogView.findViewById<MaterialButton>(R.id.btn_send_reset)
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+
+        btnSend.setOnClickListener {
+            val email = etEmail.text.toString().trim()
+            if (email.isEmpty()) {
+                Toast.makeText(this, "Masukkan email Anda", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (!isValidEmail(email)) {
+                Toast.makeText(this, "Format email tidak valid", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            btnSend.isEnabled = false
+            btnSend.text = "Mengirim..."
+
+            firebaseAuthManager.sendPasswordReset(
+                email = email,
+                onSuccess = {
+                    dialog.dismiss()
+                    Toast.makeText(this, "Email reset kata sandi telah dikirim ke $email", Toast.LENGTH_LONG).show()
+                },
+                onFailure = { errorMessage ->
+                    btnSend.isEnabled = true
+                    btnSend.text = "Kirim Reset"
+                    Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+
+        dialog.show()
     }
 
     private fun validateLoginButton() {
@@ -157,6 +216,9 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun submitLogin(email: String, password: String) {
+        // Check network connectivity
+        if (!NetworkUtils.checkAndNotify(this)) return
+
         // Prevent double-click
         if (isLoading) {
             Toast.makeText(this, "Proses login sedang berlangsung, harap tunggu...", Toast.LENGTH_SHORT).show()

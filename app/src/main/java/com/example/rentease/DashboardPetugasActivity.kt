@@ -52,6 +52,7 @@ class DashboardPetugasActivity : AppCompatActivity() {
         setupMenuListeners()
         loadStats()
         animateMenuCards()
+        setupBackPressHandler()
     }
 
     /**
@@ -219,6 +220,53 @@ class DashboardPetugasActivity : AppCompatActivity() {
                     ticketBadge.visibility = View.GONE
                 }
             }
+
+        // Check overdue rentals
+        checkOverdueRentals()
+    }
+
+    /**
+     * Check for rentals that have passed their endDate.
+     * Shows a red warning banner if overdue rentals found.
+     */
+    private fun checkOverdueRentals() {
+        val overdueBanner = findViewById<LinearLayout>(R.id.overdue_banner)
+        val overdueTitle = findViewById<TextView>(R.id.tv_overdue_title)
+
+        firestore.collection("rentals")
+            .whereEqualTo("status", "approved")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val today = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale("id", "ID"))
+                    .format(java.util.Date())
+                val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale("id", "ID"))
+                val todayDate = sdf.parse(today)
+
+                var overdueCount = 0
+                for (doc in snapshot) {
+                    val endDateStr = doc.getString("endDate") ?: continue
+                    try {
+                        val endDate = sdf.parse(endDateStr)
+                        if (endDate != null && todayDate != null && endDate.before(todayDate)) {
+                            overdueCount++
+                        }
+                    } catch (e: Exception) {
+                        // Skip parsing errors
+                    }
+                }
+
+                if (overdueCount > 0) {
+                    overdueTitle.text = "$overdueCount Rental Terlewat Batas!"
+                    overdueBanner.visibility = View.VISIBLE
+                    Log.d(TAG, "Overdue rentals: $overdueCount")
+                } else {
+                    overdueBanner.visibility = View.GONE
+                }
+            }
+            .addOnFailureListener { e ->
+                overdueBanner.visibility = View.GONE
+                Log.e(TAG, "Error checking overdue: ${e.message}")
+            }
     }
 
     /**
@@ -279,8 +327,11 @@ class DashboardPetugasActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-        showExitDialog()
+    private fun setupBackPressHandler() {
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                showExitDialog()
+            }
+        })
     }
 }

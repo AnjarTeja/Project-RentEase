@@ -79,9 +79,15 @@ class MyTransactionsActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        adapter = UserTransactionAdapter(transactionsList) { rental ->
-            showReturnDialog(rental)
-        }
+        adapter = UserTransactionAdapter(
+            transactions = transactionsList,
+            onReturnClick = { rental -> showReturnDialog(rental) },
+            onItemClick = { rental ->
+                if (rental.status == RentalRequest.STATUS_RETURNED && rental.rating == 0) {
+                    showRatingDialog(rental)
+                }
+            }
+        )
         rvTransactions.layoutManager = LinearLayoutManager(this)
         rvTransactions.adapter = adapter
     }
@@ -200,5 +206,19 @@ class MyTransactionsActivity : AppCompatActivity() {
             .setMessage("Silakan temui petugas dan serahkan barangnya. Petugas yang akan menyelesaikan transaksi ini.")
             .setPositiveButton("Mengerti") { _, _ -> }
             .show()
+    }
+
+    private fun showRatingDialog(rental: RentalRequest) {
+        DialogUtils.showRatingDialog(this, rental.itemName, rental.rating) { rating ->
+            firestore.collection("rentals").document(rental.id)
+                .update("rating", rating)
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Terima kasih! Rating $rating⭐ berhasil dikirim.", Toast.LENGTH_SHORT).show()
+                    loadTransactions()
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Gagal mengirim rating.", Toast.LENGTH_SHORT).show()
+                }
+        }
     }
 }
