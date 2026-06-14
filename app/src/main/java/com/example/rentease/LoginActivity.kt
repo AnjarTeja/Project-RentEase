@@ -1,6 +1,8 @@
 package com.example.rentease
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -16,8 +18,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
@@ -35,6 +39,11 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var loginTimeoutRunnable: Runnable
     private val LOGIN_TIMEOUT_MS = 30000L  // 30 seconds timeout
 
+    // Notification permission launcher (Android 13+)
+    private val requestNotificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* no-op: notifications still work, just silently */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -46,6 +55,9 @@ class LoginActivity : AppCompatActivity() {
         }
 
         firebaseAuthManager = FirebaseAuthManager()
+
+        // Request notification permission on Android 13+
+        requestNotificationPermissionIfNeeded()
 
         // Check if user is already logged in
         if (firebaseAuthManager.isUserLoggedIn()) {
@@ -366,5 +378,19 @@ class LoginActivity : AppCompatActivity() {
         dialogView.findViewById<View>(R.id.dialog_icon_bg).setBackgroundResource(R.drawable.bg_icon_circle_orange)
 
         dialog.show()
+    }
+
+    /**
+     * Request POST_NOTIFICATIONS permission on Android 13+ (API 33).
+     * Without this, local notifications won't show on newer devices.
+     */
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestNotificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 }
