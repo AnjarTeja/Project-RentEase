@@ -259,6 +259,198 @@ class FirebaseAuthManager {
             }
     }
 
+    fun seedPredefinedAccounts(onComplete: () -> Unit) {
+        val accounts = listOf(
+            Triple("admin@gmail.com", "12345678", ROLE_ADMIN),
+            Triple("petugas@gmail.com", "12345678", ROLE_PETUGAS)
+        )
+        seedNextAccount(accounts, 0, onComplete)
+    }
+
+    private fun seedNextAccount(
+        accounts: List<Triple<String, String, String>>,
+        index: Int,
+        onComplete: () -> Unit
+    ) {
+        if (index >= accounts.size) {
+            firebaseAuth.signOut()
+            onComplete()
+            return
+        }
+        val (email, password, role) = accounts[index]
+
+        firebaseAuth.createUserWithEmailAndPassword(email, password)
+            .addOnSuccessListener { authResult ->
+                val uid = authResult.user?.uid ?: return@addOnSuccessListener
+                val userData = hashMapOf(
+                    "name" to when (role) {
+                        ROLE_ADMIN -> "Administrator"
+                        ROLE_PETUGAS -> "Petugas"
+                        else -> role
+                    },
+                    "email" to email,
+                    "phone" to "",
+                    "role" to role,
+                    "createdAt" to System.currentTimeMillis()
+                )
+                firestore.collection("users").document(uid)
+                    .set(userData, SetOptions.merge())
+                    .addOnCompleteListener {
+                        firebaseAuth.signOut()
+                        seedNextAccount(accounts, index + 1, onComplete)
+                    }
+            }
+            .addOnFailureListener { exception ->
+                if (exception.message?.contains("email address is already in use") == true) {
+                    // Account exists — ensure Firestore document has correct role
+                    firebaseAuth.signInWithEmailAndPassword(email, password)
+                        .addOnSuccessListener { authResult ->
+                            val uid = authResult.user?.uid ?: ""
+                            firestore.collection("users").document(uid)
+                                .set(mapOf("role" to role), SetOptions.merge())
+                                .addOnCompleteListener {
+                                    firebaseAuth.signOut()
+                                    seedNextAccount(accounts, index + 1, onComplete)
+                                }
+                        }
+                        .addOnFailureListener {
+                            firebaseAuth.signOut()
+                            seedNextAccount(accounts, index + 1, onComplete)
+                        }
+                } else {
+                    firebaseAuth.signOut()
+                    seedNextAccount(accounts, index + 1, onComplete)
+                }
+            }
+    }
+
+    // Login or auto-register predefined accounts (admin/petugas)
+    fun loginOrRegisterPredefinedAccount(
+        email: String,
+        password: String,
+        role: String,
+        onSuccess: (role: String) -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        firebaseAuth.signInWithEmailAndPassword(email, password)
+            .addOnSuccessListener {
+                Log.d(TAG, "Login successful for predefined account: $email")
+                getUserRole(onSuccess = onSuccess, onFailure = onFailure)
+            }
+            .addOnFailureListener { signInError ->
+                val signInMsg = signInError.message ?: ""
+                Log.d(TAG, "Sign-in failed for $email: $signInMsg")
+
+                if (signInMsg.contains("no user record", true)) {
+                    // Account doesn't exist — create it
+                    createPredefinedAccount(email, password, role, onSuccess, onFailure)
+                } else if (signInMsg.contains("password is invalid", true) ||
+                           signInMsg.contains("wrong password", true) ||
+                           signInMsg.contains("invalid password", true)) {
+                    // Account exists but wrong password
+                    val action = if (email.contains("admin") || email.contains("petugas")) {
+                        "Hapus dulu akun $email di Firebase Console (Authentication → Users), lalu login lagi"
+                    } else {
+                        "Coba reset kata sandi"
+                    }
+                    onFailure("Kata sandi salah untuk $email. $action.")
+                } else if (signInMsg.contains("too many attempts", true)) {
+                    onFailure("Terlalu banyak percobaan. Tunggu beberapa saat lalu coba lagi.")
+                } else {
+                    // Unknown error — try to create (might be transient)
+                    firebaseAuth.createUserWithEmailAndPassword(email, password)
+                        .addOnSuccessListener { authResult ->
+                            val uid = authResult.user?.uid
+                            if (uid == null) {
+                                onFailure("Gagal membuat akun: UID kosong")
+                                return@addOnSuccessListener
+                            }
+                            savePredefinedAccount(uid, email, password, role, onSuccess, onFailure)
+                        }
+                        .addOnFailureListener { createError ->
+                            val createMsg = createError.message ?: ""
+                            if (createMsg.contains("email address is already in use", true)) {
+                                // Account exists but sign-in failed for non-password reason
+                                onFailure("Akun $email sudah ada. Error: $signInMsg. Coba hapus dulu akun di Firebase Console.")
+                            } else if (createMsg.contains("not enabled", true)) {
+                                onFailure("Login Email/Password belum diaktifkan di Firebase Console")
+                            } else {
+                                onFailure("Login gagal: $signInMsg")
+                            }
+                        }
+                }
+            }
+    }
+
+    private fun createPredefinedAccount(
+        email: String,
+        password: String,
+        role: String,
+        onSuccess: (String) -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        Log.d(TAG, "Creating predefined account: $email")
+        firebaseAuth.createUserWithEmailAndPassword(email, password)
+            .addOnSuccessListener { authResult ->
+                val uid = authResult.user?.uid
+                if (uid == null) {
+                    onFailure("Gagal membuat akun: UID kosong")
+                    return@addOnSuccessListener
+                }
+                savePredefinedAccount(uid, email, password, role, onSuccess, onFailure)
+            }
+            .addOnFailureListener { e ->
+                Log.d(TAG, "Failed to create predefined account: ${e.message}")
+                val msg = when {
+                    e.message?.contains("not enabled", true) == true ->
+                        "Login Email/Password belum diaktifkan di Firebase Console"
+                    e.message?.contains("email", true) == true ->
+                        "Email sudah terdaftar atau tidak valid"
+                    e.message?.contains("password", true) == true ->
+                        "Kata sandi minimal 6 karakter"
+                    else ->
+                        "Gagal membuat akun: ${e.message}"
+                }
+                onFailure(msg)
+            }
+    }
+
+    private fun savePredefinedAccount(
+        uid: String,
+        email: String,
+        password: String,
+        role: String,
+        onSuccess: (String) -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        val name = when (role) {
+            ROLE_ADMIN -> "Administrator"
+            ROLE_PETUGAS -> "Petugas"
+            else -> role
+        }
+        val userData = hashMapOf(
+            "name" to name,
+            "email" to email,
+            "phone" to "",
+            "role" to role,
+            "createdAt" to System.currentTimeMillis()
+        )
+        firestore.collection("users").document(uid)
+            .set(userData, SetOptions.merge())
+            .addOnSuccessListener {
+                cachedUserRole = role
+                lastCachedUid = uid
+                Log.d(TAG, "Predefined account saved: $email -> $role")
+                onSuccess(role)
+            }
+            .addOnFailureListener { e ->
+                cachedUserRole = role
+                lastCachedUid = uid
+                Log.d(TAG, "Account created but Firestore save failed: ${e.message}")
+                onSuccess(role)
+            }
+    }
+
     // Send password reset email
     fun sendPasswordReset(
         email: String,

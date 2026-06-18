@@ -17,117 +17,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RentEase">
         <activity
-            android:name=".SplashScreenActivity"
-            android:theme="@style/Theme.RentEase.Splash"
+            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".LoginActivity"
-            android:exported="true" />
-        <activity
-            android:name=".RegisterActivity"
-            android:exported="true" />
-        <activity
-            android:name=".DashboardActivity"
-            android:exported="true" />
-        <activity
-            android:name=".DashboardPetugasActivity"
-            android:exported="true" />
-        <activity
-            android:name=".DashboardAdminActivity"
-            android:exported="true" />
-        <activity
-            android:name=".VerifyRentalActivity"
-            android:exported="true" />
-        <activity
-            android:name=".ViewReportsActivity"
-            android:exported="true" />
-        <activity
-            android:name=".ManageItemsActivity"
-            android:exported="true" />
-        <activity
-            android:name=".UserComplaintsActivity"
-            android:exported="true" />
-        <activity
-            android:name=".ManageUsersActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ProfilePetugasActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ProfileAdminActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".AddEditItemActivity"
-            android:exported="false" />
-        <activity
-            android:name=".VerifyUserItemsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ManageReturnsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ProfileUserActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ItemDetailActivity"
-            android:exported="false" />
-        <activity
-            android:name=".BrowseItemsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".MyTransactionsActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".MyItemsActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".HistoryActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".HelpActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".CustomerServiceActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".TicketDetailActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".IncomingRentalsActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".FavoritesActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".ChatActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".ChatListActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".ReportItemActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".BrowseItemsMvvmActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
     </application>
 
 </manifest>
