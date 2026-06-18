@@ -197,6 +197,18 @@ class DashboardActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        // Favorit
+        findViewById<LinearLayout>(R.id.menu_favorites).setOnClickListener {
+            val intent = Intent(this, FavoritesActivity::class.java)
+            startActivity(intent)
+        }
+
+        // Pesan
+        findViewById<LinearLayout>(R.id.menu_chat).setOnClickListener {
+            val intent = Intent(this, ChatListActivity::class.java)
+            startActivity(intent)
+        }
+
         // Bantuan
         findViewById<LinearLayout>(R.id.menu_help).setOnClickListener {
             val intent = Intent(this, HelpActivity::class.java)
@@ -332,7 +344,8 @@ class DashboardActivity : AppCompatActivity() {
     private fun animateMenuIcons() {
         val menus = listOf(
             R.id.menu_browse, R.id.menu_add_item, R.id.menu_my_transactions,
-            R.id.menu_my_items, R.id.menu_incoming_rentals, R.id.menu_history, R.id.menu_help
+            R.id.menu_my_items, R.id.menu_incoming_rentals, R.id.menu_favorites,
+            R.id.menu_chat, R.id.menu_history, R.id.menu_help
         )
 
         menus.forEachIndexed { index, id ->

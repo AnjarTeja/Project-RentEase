@@ -26,6 +26,7 @@ class AddEditItemActivity : AppCompatActivity() {
     private var isUser: Boolean = false
 
     private var selectedImageUri: String = ""
+    private var isUploading = false
 
     private lateinit var ivPhoto: ImageView
     private lateinit var ivPlaceholder: ImageView
@@ -40,15 +41,10 @@ class AddEditItemActivity : AppCompatActivity() {
     private lateinit var btnSave: TextView
     private lateinit var backButton: ImageButton
 
-    // Activity Result Launcher for picking an image
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
             try {
-                // Persist permission so we can read it later
-                contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 selectedImageUri = uri.toString()
                 ivPhoto.setImageURI(uri)
                 ivPlaceholder.visibility = View.GONE
@@ -144,18 +140,12 @@ class AddEditItemActivity : AppCompatActivity() {
                 if (document.exists()) {
                     etName.setText(document.getString("name"))
                     etDesc.setText(document.getString("description"))
-                    
+
                     val price = document.getDouble("price")
-                    if (price != null) {
-                        etPrice.setText(price.toInt().toString())
-                    }
+                    if (price != null) etPrice.setText(price.toInt().toString())
 
                     val stock = document.getLong("stock")
-                    if (stock != null) {
-                        etStock.setText(stock.toString())
-                    } else {
-                        etStock.setText("1") // Default
-                    }
+                    etStock.setText((stock?.toInt() ?: 1).toString())
 
                     val imageUrl = document.getString("imageUrl")
                     if (!imageUrl.isNullOrEmpty()) {
@@ -163,23 +153,19 @@ class AddEditItemActivity : AppCompatActivity() {
                         try {
                             ivPhoto.setImageURI(Uri.parse(imageUrl))
                             ivPlaceholder.visibility = View.GONE
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
+                        } catch (e: Exception) { e.printStackTrace() }
                     }
 
                     val status = document.getString("status")
-                    val pos = when (status) {
+                    spinnerStatus.setSelection(when (status) {
                         Item.STATUS_AVAILABLE -> 0
                         Item.STATUS_RENTED -> 1
                         Item.STATUS_MAINTENANCE -> 2
                         else -> 0
-                    }
-                    spinnerStatus.setSelection(pos)
+                    })
 
                     val category = document.getString("category") ?: Item.CATEGORY_OTHER
-                    val catPos = Item.CATEGORIES.indexOf(category).coerceAtLeast(0)
-                    spinnerCategory.setSelection(catPos)
+                    spinnerCategory.setSelection(Item.CATEGORIES.indexOf(category).coerceAtLeast(0))
                 } else {
                     Toast.makeText(this, "Barang tidak ditemukan", Toast.LENGTH_SHORT).show()
                     finish()
@@ -193,6 +179,8 @@ class AddEditItemActivity : AppCompatActivity() {
     }
 
     private fun saveItemData() {
+        if (isUploading) return
+
         val name = etName.text.toString().trim()
         val desc = etDesc.text.toString().trim()
         val priceStr = etPrice.text.toString().trim()
@@ -228,47 +216,70 @@ class AddEditItemActivity : AppCompatActivity() {
         btnSave.isEnabled = false
         btnSave.text = "Menyimpan..."
 
+        // If image is a local URI, upload to Firebase Storage first
+        if (selectedImageUri.isNotEmpty() && !selectedImageUri.startsWith("https://firebasestorage")) {
+            isUploading = true
+            btnSave.text = "Mengupload gambar..."
+
+            ImageUploadHelper.uploadImage(
+                context = this,
+                imageUri = Uri.parse(selectedImageUri),
+                folder = "items",
+                onSuccess = { downloadUrl ->
+                    isUploading = false
+                    saveToFirestore(name, desc, price, stock, statusValue, approvalStatus, selectedCategory, downloadUrl)
+                },
+                onFailure = { error ->
+                    isUploading = false
+                    // Fallback: save with original URI
+                    saveToFirestore(name, desc, price, stock, statusValue, approvalStatus, selectedCategory, selectedImageUri)
+                    Toast.makeText(this, "Gambar akan diproses nanti: $error", Toast.LENGTH_SHORT).show()
+                }
+            )
+        } else {
+            saveToFirestore(name, desc, price, stock, statusValue, approvalStatus, selectedCategory, selectedImageUri)
+        }
+    }
+
+    private fun saveToFirestore(
+        name: String, desc: String, price: Double, stock: Int,
+        statusValue: String, approvalStatus: String, category: String, imageUrl: String
+    ) {
         val itemData = hashMapOf<String, Any>(
             "name" to name,
             "description" to desc,
             "price" to price,
             "stock" to stock,
             "status" to statusValue,
-            "imageUrl" to selectedImageUri,
+            "imageUrl" to imageUrl,
             "approvalStatus" to approvalStatus,
-            "category" to selectedCategory,
+            "category" to category,
             "updatedAt" to System.currentTimeMillis()
         )
 
         val ownerId = firebaseAuthManager.getCurrentUserUID() ?: ""
 
         if (itemId == null) {
-            // Add new
             itemData["createdAt"] = System.currentTimeMillis()
             itemData["ownerId"] = ownerId
-            
-            firestore.collection("items")
-                .add(itemData)
+
+            firestore.collection("items").add(itemData)
                 .addOnSuccessListener {
                     Toast.makeText(this, "Barang berhasil ditambahkan", Toast.LENGTH_SHORT).show()
                     finish()
                 }
                 .addOnFailureListener {
-                    btnSave.isEnabled = true
-                    btnSave.text = "Simpan Data Barang"
+                    btnSave.isEnabled = true; btnSave.text = "Simpan Data Barang"
                     Toast.makeText(this, "Gagal menambahkan barang", Toast.LENGTH_SHORT).show()
                 }
         } else {
-            // Update existing
-            firestore.collection("items").document(itemId!!)
-                .update(itemData)
+            firestore.collection("items").document(itemId!!).update(itemData)
                 .addOnSuccessListener {
                     Toast.makeText(this, "Barang berhasil diperbarui", Toast.LENGTH_SHORT).show()
                     finish()
                 }
                 .addOnFailureListener {
-                    btnSave.isEnabled = true
-                    btnSave.text = "Simpan Perubahan"
+                    btnSave.isEnabled = true; btnSave.text = "Simpan Perubahan"
                     Toast.makeText(this, "Gagal memperbarui barang", Toast.LENGTH_SHORT).show()
                 }
         }

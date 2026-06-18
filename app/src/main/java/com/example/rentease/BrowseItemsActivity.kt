@@ -10,10 +10,13 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -37,13 +40,16 @@ class BrowseItemsActivity : AppCompatActivity() {
     private lateinit var etSearch: EditText
     private lateinit var btnClearSearch: ImageButton
     private lateinit var categoryChipsContainer: LinearLayout
+    private lateinit var etPriceMin: EditText
+    private lateinit var etPriceMax: EditText
+    private lateinit var spinnerSort: Spinner
 
     private val allItemList = mutableListOf<Item>()
     private val itemList = mutableListOf<Item>()
 
-    // Category filter state
     private var selectedCategory: String? = null
     private val categoryChips = mutableListOf<TextView>()
+    private var sortOption = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +65,7 @@ class BrowseItemsActivity : AppCompatActivity() {
         initializeViews()
         setupRecyclerView()
         setupCategoryChips()
+        setupSortSpinner()
         setupListeners()
     }
 
@@ -74,6 +81,9 @@ class BrowseItemsActivity : AppCompatActivity() {
         etSearch = findViewById(R.id.et_search_items)
         btnClearSearch = findViewById(R.id.btn_clear_search)
         categoryChipsContainer = findViewById(R.id.category_chips_container)
+        etPriceMin = findViewById(R.id.et_price_min)
+        etPriceMax = findViewById(R.id.et_price_max)
+        spinnerSort = findViewById(R.id.spinner_sort)
     }
 
     private fun setupRecyclerView() {
@@ -91,19 +101,16 @@ class BrowseItemsActivity : AppCompatActivity() {
         categoryChipsContainer.removeAllViews()
         categoryChips.clear()
 
-        // "All" chip
         val allChip = createChip("Semua", null)
         categoryChipsContainer.addView(allChip)
         categoryChips.add(allChip)
 
-        // Category chips
         for (category in Item.CATEGORIES) {
             val chip = createChip(category, category)
             categoryChipsContainer.addView(chip)
             categoryChips.add(chip)
         }
 
-        // Select "Semua" by default
         selectChip(allChip, null)
     }
 
@@ -116,9 +123,7 @@ class BrowseItemsActivity : AppCompatActivity() {
             val params = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                marginEnd = dp(8)
-            }
+            ).apply { marginEnd = dp(8) }
             layoutParams = params
         }
 
@@ -151,25 +156,29 @@ class BrowseItemsActivity : AppCompatActivity() {
         ).toInt()
     }
 
-    private fun setupListeners() {
-        findViewById<ImageButton>(R.id.btn_back).setOnClickListener {
-            finish()
-        }
-        
-        // Search functionality
-        etSearch.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val query = s.toString().trim()
-                if (query.isNotEmpty()) {
-                    btnClearSearch.visibility = View.VISIBLE
-                } else {
-                    btnClearSearch.visibility = View.GONE
-                }
+    private fun setupSortSpinner() {
+        val sortOptions = arrayOf("Populer", "Termurah", "Termahal", "Terbaru")
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, sortOptions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerSort.adapter = adapter
+        spinnerSort.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                sortOption = position
                 applyFilters()
             }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
 
+    private fun setupListeners() {
+        findViewById<ImageButton>(R.id.btn_back).setOnClickListener { finish() }
+
+        etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                btnClearSearch.visibility = if (s.toString().trim().isNotEmpty()) View.VISIBLE else View.GONE
+                applyFilters()
+            }
             override fun afterTextChanged(s: Editable?) {}
         })
 
@@ -177,10 +186,21 @@ class BrowseItemsActivity : AppCompatActivity() {
             etSearch.setText("")
             etSearch.clearFocus()
         }
+
+        val priceWatcher = object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { applyFilters() }
+            override fun afterTextChanged(s: Editable?) {}
+        }
+        etPriceMin.addTextChangedListener(priceWatcher)
+        etPriceMax.addTextChangedListener(priceWatcher)
     }
 
     private fun applyFilters() {
         val query = etSearch.text.toString().trim().lowercase()
+        val priceMin = etPriceMin.text.toString().trim().toDoubleOrNull() ?: 0.0
+        val priceMax = etPriceMax.text.toString().trim().toDoubleOrNull() ?: Double.MAX_VALUE
+
         itemList.clear()
 
         for (item in allItemList) {
@@ -188,17 +208,25 @@ class BrowseItemsActivity : AppCompatActivity() {
             val matchesSearch = query.isEmpty() ||
                 item.name.lowercase().contains(query) ||
                 item.description.lowercase().contains(query)
+            val matchesPrice = item.price >= priceMin && item.price <= priceMax
 
-            if (matchesCategory && matchesSearch) {
+            if (matchesCategory && matchesSearch && matchesPrice) {
                 itemList.add(item)
             }
         }
 
+        when (sortOption) {
+            0 -> itemList.sortByDescending { it.rentCount } // Populer
+            1 -> itemList.sortBy { it.price } // Termurah
+            2 -> itemList.sortByDescending { it.price } // Termahal
+            3 -> itemList.sortByDescending { it.createdAt } // Terbaru
+        }
+
         adapter.updateData(itemList)
-        
+
         if (itemList.isEmpty()) {
             emptyState.visibility = View.VISIBLE
-            findViewById<TextView>(R.id.tv_empty_message)?.text = 
+            findViewById<TextView>(R.id.tv_empty_message)?.text =
                 if (query.isNotEmpty()) "Barang '$query' tidak ditemukan"
                 else "Tidak ada barang di kategori ini"
         } else {
@@ -221,8 +249,6 @@ class BrowseItemsActivity : AppCompatActivity() {
                 for (doc in documents) {
                     try {
                         val approval = doc.getString("approvalStatus")
-                        
-                        // Show if approved OR if the field is missing (for legacy data)
                         if (approval == null || approval == Item.APPROVAL_APPROVED) {
                             val item = Item(
                                 id = doc.id,
@@ -245,9 +271,7 @@ class BrowseItemsActivity : AppCompatActivity() {
                     }
                 }
 
-                // Sort by most popular first
                 allItemList.sortByDescending { it.rentCount }
-                
                 applyFilters()
 
                 progressBar.visibility = View.GONE

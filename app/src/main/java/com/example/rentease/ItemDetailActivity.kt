@@ -15,6 +15,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -24,6 +25,7 @@ import java.util.Locale
 class ItemDetailActivity : AppCompatActivity() {
 
     private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
     private val authManager = FirebaseAuthManager()
 
     private lateinit var itemId: String
@@ -31,6 +33,8 @@ class ItemDetailActivity : AppCompatActivity() {
     private lateinit var itemOwnerId: String
     private var itemPrice: Double = 0.0
     private var itemImageUrl: String = ""
+    private var isFavorite = false
+    private var favoriteDocId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +43,6 @@ class ItemDetailActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.item_detail_root)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            // Don't pad top because of CollapsingToolbar
             v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
             insets
         }
@@ -53,14 +56,84 @@ class ItemDetailActivity : AppCompatActivity() {
         }
 
         setupBackButton()
+        setupFavoriteButton()
         loadItemDetails()
         setupRentButton()
+        setupReportButton()
     }
 
     private fun setupBackButton() {
-        findViewById<ImageButton>(R.id.btn_back).setOnClickListener {
-            finish()
+        findViewById<ImageButton>(R.id.btn_back).setOnClickListener { finish() }
+    }
+
+    private fun setupFavoriteButton() {
+        val btnFavorite = findViewById<ImageButton>(R.id.btn_favorite)
+        val uid = auth.currentUser?.uid ?: return
+
+        firestore.collection("favorites")
+            .whereEqualTo("userId", uid)
+            .whereEqualTo("itemId", itemId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                if (!snapshot.isEmpty) {
+                    isFavorite = true
+                    favoriteDocId = snapshot.documents[0].id
+                    btnFavorite.setImageResource(R.drawable.ic_favorite_filled)
+                }
+            }
+
+        btnFavorite.setOnClickListener {
+            if (auth.currentUser == null) {
+                Toast.makeText(this, "Silakan login terlebih dahulu", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (isFavorite) {
+                removeFavorite()
+            } else {
+                addFavorite()
+            }
         }
+    }
+
+    private fun addFavorite() {
+        val uid = auth.currentUser?.uid ?: return
+        val favData = hashMapOf(
+            "userId" to uid,
+            "itemId" to itemId,
+            "createdAt" to System.currentTimeMillis()
+        )
+
+        firestore.collection("favorites").add(favData)
+            .addOnSuccessListener { doc ->
+                isFavorite = true
+                favoriteDocId = doc.id
+                findViewById<ImageButton>(R.id.btn_favorite).setImageResource(R.drawable.ic_favorite_filled)
+                Toast.makeText(this, "Ditambahkan ke favorit", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Gagal menambahkan favorit", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun removeFavorite() {
+        if (favoriteDocId != null) {
+            firestore.collection("favorites").document(favoriteDocId!!).delete()
+        } else {
+            firestore.collection("favorites")
+                .whereEqualTo("userId", auth.currentUser?.uid)
+                .whereEqualTo("itemId", itemId)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    for (doc in snapshot) {
+                        firestore.collection("favorites").document(doc.id).delete()
+                    }
+                }
+        }
+
+        isFavorite = false
+        favoriteDocId = null
+        findViewById<ImageButton>(R.id.btn_favorite).setImageResource(R.drawable.ic_favorite)
+        Toast.makeText(this, "Dihapus dari favorit", Toast.LENGTH_SHORT).show()
     }
 
     private fun loadItemDetails() {
@@ -185,9 +258,12 @@ class ItemDetailActivity : AppCompatActivity() {
 
                 firestore.collection("rentals")
                     .add(rentalRequest)
-                    .addOnSuccessListener {
+                    .addOnSuccessListener { docRef ->
                         Toast.makeText(this, "Berhasil mengajukan sewa! Menunggu persetujuan petugas.", Toast.LENGTH_LONG).show()
                         NotificationHelper.showOwnerRentalRequestNotification(this, renterName, itemName, duration)
+
+                        // Create chat between renter and owner
+                        createChat(docRef.id, renterName)
                         finish()
                     }
                     .addOnFailureListener {
@@ -206,5 +282,60 @@ class ItemDetailActivity : AppCompatActivity() {
         btnRentNow.text = "Ajukan Sewa Barang"
         progressBar.visibility = View.GONE
         btnRentNow.isEnabled = true
+    }
+
+    private fun setupReportButton() {
+        findViewById<MaterialButton>(R.id.btn_report_item).setOnClickListener {
+            if (auth.currentUser == null) {
+                Toast.makeText(this, "Silakan login untuk melaporkan barang", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val intent = Intent(this, ReportItemActivity::class.java)
+            intent.putExtra("ITEM_ID", itemId)
+            intent.putExtra("ITEM_NAME", itemName)
+            startActivity(intent)
+        }
+    }
+
+    private fun createChat(rentalId: String, renterName: String) {
+        val uid = auth.currentUser?.uid ?: return
+
+        // Check if chat already exists
+        firestore.collection("chats")
+            .whereEqualTo("rentalId", rentalId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.isEmpty) {
+                    authManager.getUserData(
+                        onSuccess = { userData ->
+                            val userName = userData["name"] as? String ?: renterName
+
+                            val chat = hashMapOf(
+                                "rentalId" to rentalId,
+                                "itemId" to itemId,
+                                "itemName" to itemName,
+                                "renterId" to uid,
+                                "renterName" to userName,
+                                "ownerId" to itemOwnerId,
+                                "ownerName" to "Pemilik Barang",
+                                "lastMessage" to "Halo, saya ingin bertanya tentang $itemName",
+                                "lastMessageTime" to System.currentTimeMillis(),
+                                "createdAt" to System.currentTimeMillis()
+                            )
+
+                            // Get owner name
+                            firestore.collection("users").document(itemOwnerId).get()
+                                .addOnSuccessListener { ownerDoc ->
+                                    chat["ownerName"] = ownerDoc.getString("name") ?: "Pemilik Barang"
+                                    firestore.collection("chats").add(chat)
+                                }
+                                .addOnFailureListener {
+                                    firestore.collection("chats").add(chat)
+                                }
+                        },
+                        onFailure = {}
+                    )
+                }
+            }
     }
 }

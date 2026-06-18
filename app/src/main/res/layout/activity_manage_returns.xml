@@ -60,6 +60,38 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- Fine Summary Header -->
+    <LinearLayout
+        android:id="@+id/ll_fine_summary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/tech_card_bg"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_overdue_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="0 Rental Terlambat"
+            android:textColor="@color/warning_color"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_total_fine"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Total Denda: Rp 0"
+            android:textColor="@color/warning_color"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">

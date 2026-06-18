@@ -87,6 +87,7 @@
                         android:textSize="12sp" />
 
                     <TextView
+                        android:id="@+id/stat_open_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
@@ -113,6 +114,7 @@
                         android:textSize="12sp" />
 
                     <TextView
+                        android:id="@+id/stat_progress_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
@@ -139,6 +141,7 @@
                         android:textSize="12sp" />
 
                     <TextView
+                        android:id="@+id/stat_resolved_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"

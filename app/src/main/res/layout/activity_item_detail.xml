@@ -44,6 +44,18 @@
                 app:layout_collapseMode="pin"
                 app:tint="@color/white" />
 
+            <!-- Favorite Button -->
+            <ImageButton
+                android:id="@+id/btn_favorite"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_margin="16dp"
+                android:layout_gravity="end"
+                android:background="@drawable/bg_menu_icon_circle"
+                android:src="@drawable/ic_favorite"
+                app:layout_collapseMode="pin"
+                app:tint="@color/white" />
+
         </com.google.android.material.appbar.CollapsingToolbarLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -241,6 +253,21 @@
                 android:layout_marginTop="-48dp"
                 android:indeterminateTint="@color/white"
                 android:visibility="gone" />
+
+            <!-- Report Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_report_item"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_marginTop="12dp"
+                android:backgroundTint="@color/tech_surface"
+                android:icon="@drawable/ic_complaint"
+                android:iconTint="@color/error_color"
+                android:text="Laporkan Barang"
+                android:textColor="@color/error_color"
+                android:textSize="13sp"
+                app:cornerRadius="10dp"
+                app:iconSize="16dp" />
 
             <View
                 android:layout_width="match_parent"

@@ -1,6 +1,7 @@
 package com.example.rentease
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.ImageView
@@ -12,6 +13,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.github.mikephil.charting.charts.PieChart
+import com.github.mikephil.charting.data.PieData
+import com.github.mikephil.charting.data.PieDataSet
+import com.github.mikephil.charting.data.PieEntry
+import com.github.mikephil.charting.utils.ColorTemplate
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -145,7 +151,7 @@ class DashboardAdminActivity : AppCompatActivity() {
     }
 
     private fun showSystemStatsDialog() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_confirmation, null)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_admin_stats, null)
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setCancelable(true)
@@ -153,60 +159,80 @@ class DashboardAdminActivity : AppCompatActivity() {
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        dialogView.findViewById<TextView>(R.id.dialog_title).text = "Statistik Global"
-        dialogView.findViewById<TextView>(R.id.dialog_message).text = "Memuat statistik..."
-
-        val btnYes = dialogView.findViewById<MaterialButton>(R.id.btn_yes)
-        val btnNo = dialogView.findViewById<MaterialButton>(R.id.btn_no)
-        btnYes.text = "Tutup"
-        btnNo.visibility = android.view.View.GONE
-
-        btnYes.setOnClickListener { dialog.dismiss() }
-        dialogView.findViewById<android.view.View>(R.id.dialog_icon_bg).setBackgroundResource(R.drawable.bg_icon_circle_cyan)
+        val tvUsers = dialogView.findViewById<TextView>(R.id.tv_stat_users_chart)
+        val tvItems = dialogView.findViewById<TextView>(R.id.tv_stat_items_chart)
+        val tvRentals = dialogView.findViewById<TextView>(R.id.tv_stat_rentals_chart)
+        val pieChart = dialogView.findViewById<PieChart>(R.id.pie_chart)
+        val tvLegend = dialogView.findViewById<TextView>(R.id.tv_chart_legend)
 
         dialog.show()
 
-        // Load stats asynchronously
         var totalUsers = 0
         var totalItems = 0
-        var totalRentals = 0
         var pendingRentals = 0
         var approvedRentals = 0
         var returnedRentals = 0
         var openTickets = 0
         var loaded = 0
-        val totalQueries = 5
+        val totalQueries = 3
 
         fun updateStats() {
             loaded++
-            if (loaded == totalQueries) {
-                val revenue = approvedRentals * 50000 // Estimated
-                val stats = buildString {
-                    append("📊 Ringkasan Sistem RentEase\n\n")
-                    append("👥 Total Pengguna: $totalUsers\n")
-                    append("📦 Total Barang: $totalItems\n")
-                    append("📋 Total Transaksi: $totalRentals\n")
-                    append("   ⏳ Pending: $pendingRentals\n")
-                    append("   ✅ Disetujui: $approvedRentals\n")
-                    append("   🔄 Dikembalikan: $returnedRentals\n\n")
-                    append("🎫 Tiket Support Terbuka: $openTickets")
+            if (loaded >= totalQueries) {
+                tvUsers.text = totalUsers.toString()
+                tvItems.text = totalItems.toString()
+                tvRentals.text = (pendingRentals + approvedRentals + returnedRentals).toString()
+
+                // Setup Pie Chart
+                val entries = mutableListOf<PieEntry>()
+                if (pendingRentals > 0) entries.add(PieEntry(pendingRentals.toFloat(), "Pending"))
+                if (approvedRentals > 0) entries.add(PieEntry(approvedRentals.toFloat(), "Disetujui"))
+                if (returnedRentals > 0) entries.add(PieEntry(returnedRentals.toFloat(), "Dikembalikan"))
+
+                if (entries.isNotEmpty()) {
+                    val dataSet = PieDataSet(entries, "").apply {
+                        colors = listOf(
+                            Color.rgb(255, 170, 0),   // Orange for pending
+                            Color.rgb(0, 255, 136),   // Green for approved
+                            Color.rgb(0, 217, 255)    // Cyan for returned
+                        )
+                        valueTextColor = Color.WHITE
+                        valueTextSize = 12f
+                    }
+
+                    pieChart.data = PieData(dataSet)
+                    pieChart.description.isEnabled = false
+                    pieChart.setDrawEntryLabels(true)
+                    pieChart.setEntryLabelColor(Color.WHITE)
+                    pieChart.setEntryLabelTextSize(11f)
+                    pieChart.setUsePercentValues(true)
+                    pieChart.holeRadius = 40f
+                    pieChart.setHoleColor(Color.TRANSPARENT)
+                    pieChart.transparentCircleRadius = 45f
+                    pieChart.legend.isEnabled = false
+                    pieChart.invalidate()
+                } else {
+                    pieChart.visibility = View.GONE
                 }
-                dialogView.findViewById<TextView>(R.id.dialog_message).text = stats
+
+                tvLegend.text = buildString {
+                    append("• Pengguna: $totalUsers\n")
+                    append("• Barang: $totalItems\n")
+                    append("• Tiket Terbuka: $openTickets\n")
+                    append("• Pending: $pendingRentals | Disetujui: $approvedRentals | Kembali: $returnedRentals")
+                }
             }
         }
 
         db.collection("users").get().addOnSuccessListener {
-            totalUsers = it.size()
-            updateStats()
+            totalUsers = it.size(); updateStats()
         }.addOnFailureListener { updateStats() }
 
         db.collection("items").get().addOnSuccessListener {
-            totalItems = it.size()
-            updateStats()
+            totalItems = it.size(); updateStats()
         }.addOnFailureListener { updateStats() }
 
         db.collection("rentals").get().addOnSuccessListener {
-            totalRentals = it.size()
             for (doc in it) {
                 when (doc.getString("status")) {
                     "pending" -> pendingRentals++
@@ -219,11 +245,6 @@ class DashboardAdminActivity : AppCompatActivity() {
 
         db.collection("support_tickets").whereEqualTo("status", "open").get()
             .addOnSuccessListener { openTickets = it.size(); updateStats() }
-            .addOnFailureListener { updateStats() }
-
-        // Additional query for completeness
-        db.collection("items").whereEqualTo("status", "available").get()
-            .addOnSuccessListener { updateStats() }
             .addOnFailureListener { updateStats() }
     }
 
