@@ -30,13 +30,11 @@ import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +54,7 @@ import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ui.components.MenuGridItem
 import com.example.rentease.ui.components.StatItem
 import com.example.rentease.R
+import com.example.rentease.ui.components.ExitConfirmDialog
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.theme.TechDarkBg
 import com.example.rentease.ui.components.NebulaHeader
@@ -85,33 +84,18 @@ fun DashboardAdminScreen(
     var statTransactions by remember { mutableStateOf("-") }
     var statItems by remember { mutableStateOf("-") }
     var showExitDialog by remember { mutableStateOf(false) }
-
     val context = LocalContext.current
 
     BackHandler { showExitDialog = true }
 
-    if (showExitDialog) {
-        AlertDialog(
-            onDismissRequest = { showExitDialog = false },
-            title = { Text("Konfirmasi", color = TextDark) },
-            text = { Text("Apakah Anda ingin keluar dari aplikasi?", color = TextLight) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showExitDialog = false
-                    (context as? android.app.Activity)?.finish()
-                }) {
-                    Text("Ya", color = Primary)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showExitDialog = false }) {
-                    Text("Tidak", color = TextLight)
-                }
-            },
-            containerColor = TechCardBg,
-            shape = RoundedCornerShape(16.dp)
-        )
-    }
+    ExitConfirmDialog(
+        show = showExitDialog,
+        onDismiss = { showExitDialog = false },
+        onConfirm = {
+            showExitDialog = false
+            (context as? android.app.Activity)?.finish()
+        }
+    )
 
     val menus = remember {
         listOf(
