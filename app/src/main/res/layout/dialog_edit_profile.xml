@@ -62,7 +62,7 @@
                     android:id="@+id/btn_pick_avatar"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
-                    android:background="@drawable/bg_stat_card"
+                    android:background="@drawable/bg_glass_card"
                     android:gravity="center"
                     android:paddingHorizontal="16dp"
                     android:text="Pilih Foto Baru"

@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/browse_items_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/tech_dark_bg"
-    android:orientation="vertical">
+    android:background="@drawable/bg_galaxy_deep">
+
+    <com.example.rentease.StarFieldView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.4" />
+
+    <LinearLayout
+        android:id="@+id/browse_items_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
     <!-- ===== TOP BAR ===== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="64dp"
-        android:background="@color/tech_card_bg"
+        android:background="@color/tech_surface"
         android:elevation="4dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
@@ -230,3 +239,5 @@
 
     </FrameLayout>
 </LinearLayout>
+
+</FrameLayout>

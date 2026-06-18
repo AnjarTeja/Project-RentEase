@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Card Styles -->
+    <style name="CardSpace" parent="">
+        <item name="android:background">@drawable/bg_glass_card</item>
+        <item name="android:elevation">@dimen/card_elevation</item>
+    </style>
+
+    <style name="CardGlow" parent="">
+        <item name="android:background">@drawable/bg_card_glow_border</item>
+        <item name="android:elevation">@dimen/card_elevation_lg</item>
+    </style>
+
+    <style name="CardDark" parent="">
+        <item name="android:background">@drawable/bg_card_dark</item>
+        <item name="android:elevation">@dimen/card_elevation</item>
+    </style>
+
+    <!-- Button Styles -->
+    <style name="ButtonPrimary" parent="Widget.Material3.Button">
+        <item name="android:layout_height">@dimen/button_height_xl</item>
+        <item name="cornerRadius">@dimen/button_radius_md</item>
+        <item name="android:backgroundTint">@color/primary_color</item>
+        <item name="android:textColor">@color/tech_dark_bg</item>
+        <item name="android:textSize">@dimen/text_lg</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:stateListAnimator">@animator/button_press_anim</item>
+    </style>
+
+    <style name="ButtonSecondary" parent="Widget.Material3.Button">
+        <item name="android:layout_height">@dimen/button_height_lg</item>
+        <item name="cornerRadius">@dimen/button_radius_md</item>
+        <item name="android:backgroundTint">@color/tech_surface</item>
+        <item name="android:textColor">@color/primary_color</item>
+        <item name="android:textSize">@dimen/text_md</item>
+    </style>
+
+    <style name="ButtonGlow" parent="Widget.Material3.Button">
+        <item name="android:layout_height">@dimen/button_height_xl</item>
+        <item name="backgroundTint">@null</item>
+        <item name="android:background">@drawable/bg_button_glow</item>
+        <item name="android:textColor">@color/text_dark</item>
+        <item name="android:textSize">@dimen/text_lg</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:stateListAnimator">@animator/button_press_anim</item>
+    </style>
+
+    <!-- Text Styles -->
+    <style name="TextTitle">
+        <item name="android:textSize">@dimen/text_xxl</item>
+        <item name="android:textColor">@color/text_dark</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextSubtitle">
+        <item name="android:textSize">@dimen/text_xl</item>
+        <item name="android:textColor">@color/text_dark</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextBody">
+        <item name="android:textSize">@dimen/text_md</item>
+        <item name="android:textColor">@color/text_light</item>
+    </style>
+
+    <style name="TextCaption">
+        <item name="android:textSize">@dimen/text_sm</item>
+        <item name="android:textColor">@color/text_hint</item>
+    </style>
+
+    <!-- Header Style -->
+    <style name="HeaderNebula">
+        <item name="android:background">@drawable/bg_nebula_header</item>
+        <item name="android:elevation">@dimen/card_elevation</item>
+    </style>
+
+    <!-- Stat Value Style -->
+    <style name="TextStatValue">
+        <item name="android:textSize">@dimen/text_xxxl</item>
+        <item name="android:textColor">@color/primary_color</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+</resources>

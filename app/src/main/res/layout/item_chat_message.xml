@@ -11,7 +11,7 @@
         android:id="@+id/bubble_container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_stat_card_user"
+        android:background="@drawable/bg_glass_card"
         android:maxWidth="280dp"
         android:orientation="vertical"
         android:padding="12dp">

@@ -98,7 +98,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:background="@drawable/bg_stat_card_user"
+                android:background="@drawable/bg_glass_card"
                 android:padding="16dp"
                 android:text="Detail pesan dari user..."
                 android:textColor="@color/white"

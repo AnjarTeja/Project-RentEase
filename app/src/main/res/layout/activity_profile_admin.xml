@@ -20,7 +20,7 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_header_admin">
+            android:background="@drawable/bg_nebula_header">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -111,7 +111,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:background="@drawable/bg_stat_card"
+                    android:background="@drawable/bg_glass_card"
                     android:paddingHorizontal="18dp"
                     android:paddingVertical="5dp"
                     android:text="Root Access — Full Control"
@@ -341,7 +341,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_stat_card"
+                    android:background="@drawable/bg_glass_card"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="3dp"
                     android:text="Terkunci"

@@ -1,5 +1,6 @@
 package com.example.rentease
 
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -102,58 +103,50 @@ class DashboardPetugasActivity : AppCompatActivity() {
     /**
      * Navigate to profile page when tapping avatar/name area
      */
+    private fun openActivity(activity: Class<*>, extras: ((Intent) -> Unit)? = null) {
+        val intent = Intent(this, activity)
+        extras?.invoke(intent)
+        startActivity(intent)
+        overridePendingTransition(R.anim.slide_up_in, R.anim.scale_fade_out)
+    }
+
+    private fun animateCountUp(textView: TextView, target: Int) {
+        val anim = ValueAnimator.ofInt(0, target)
+        anim.duration = 600
+        anim.interpolator = DecelerateInterpolator()
+        anim.addUpdateListener { textView.text = it.animatedValue.toString() }
+        anim.start()
+    }
+
     private fun setupProfileNavigation() {
         findViewById<LinearLayout>(R.id.profile_section_btn).setOnClickListener {
-            val intent = Intent(this, ProfilePetugasActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(ProfilePetugasActivity::class.java)
         }
     }
 
-    /**
-     * Set up click listeners for all menu cards
-     */
     private fun setupMenuListeners() {
-        // Verify Rental Button
         findViewById<LinearLayout>(R.id.verify_rental_btn).setOnClickListener {
-            val intent = Intent(this, VerifyRentalActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(VerifyRentalActivity::class.java)
         }
 
-        // Manage Items Button
         findViewById<LinearLayout>(R.id.manage_items_btn).setOnClickListener {
-            val intent = Intent(this, ManageItemsActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(ManageItemsActivity::class.java)
         }
 
-        // Verify User Items Button
         findViewById<LinearLayout>(R.id.verify_user_items_btn).setOnClickListener {
-            val intent = Intent(this, VerifyUserItemsActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(VerifyUserItemsActivity::class.java)
         }
 
-        // Manage Returns Button
         findViewById<LinearLayout>(R.id.manage_returns_btn).setOnClickListener {
-            val intent = Intent(this, ManageReturnsActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(ManageReturnsActivity::class.java)
         }
 
-        // View Reports Button
         findViewById<LinearLayout>(R.id.view_reports_btn).setOnClickListener {
-            val intent = Intent(this, ViewReportsActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(ViewReportsActivity::class.java)
         }
 
-        // Customer Service Button
         findViewById<LinearLayout>(R.id.customer_service_btn).setOnClickListener {
-            val intent = Intent(this, CustomerServiceActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(CustomerServiceActivity::class.java)
         }
     }
 
@@ -174,12 +167,10 @@ class DashboardPetugasActivity : AppCompatActivity() {
             .whereEqualTo("status", "pending")
             .get()
             .addOnSuccessListener { snapshot ->
-                pendingCountView.text = snapshot.size().toString()
-                Log.d(TAG, "Pending rentals: ${snapshot.size()}")
+                animateCountUp(pendingCountView, snapshot.size())
             }
             .addOnFailureListener { e ->
                 pendingCountView.text = "0"
-                Log.e(TAG, "Error loading pending count: ${e.message}")
             }
 
         // Query approved rentals
@@ -187,24 +178,20 @@ class DashboardPetugasActivity : AppCompatActivity() {
             .whereEqualTo("status", "approved")
             .get()
             .addOnSuccessListener { snapshot ->
-                approvedCountView.text = snapshot.size().toString()
-                Log.d(TAG, "Approved rentals: ${snapshot.size()}")
+                animateCountUp(approvedCountView, snapshot.size())
             }
             .addOnFailureListener { e ->
                 approvedCountView.text = "0"
-                Log.e(TAG, "Error loading approved count: ${e.message}")
             }
 
         // Query total items
         firestore.collection("items")
             .get()
             .addOnSuccessListener { snapshot ->
-                itemsCountView.text = snapshot.size().toString()
-                Log.d(TAG, "Total items: ${snapshot.size()}")
+                animateCountUp(itemsCountView, snapshot.size())
             }
             .addOnFailureListener { e ->
                 itemsCountView.text = "0"
-                Log.e(TAG, "Error loading items count: ${e.message}")
             }
 
         // Query open support tickets
@@ -214,7 +201,7 @@ class DashboardPetugasActivity : AppCompatActivity() {
             .get()
             .addOnSuccessListener { snapshot ->
                 if (snapshot.size() > 0) {
-                    ticketBadge.text = snapshot.size().toString()
+                    animateCountUp(ticketBadge, snapshot.size())
                     ticketBadge.visibility = View.VISIBLE
                 } else {
                     ticketBadge.visibility = View.GONE

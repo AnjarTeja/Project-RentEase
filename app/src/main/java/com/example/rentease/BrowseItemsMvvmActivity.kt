@@ -207,7 +207,7 @@ class BrowseItemsMvvmActivity : AppCompatActivity() {
         viewModel.errorMessage.observe(this) { error ->
             if (error != null) {
                 Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
-                viewModel.errorMessage.value = null
+                viewModel.clearError()
             }
         }
     }

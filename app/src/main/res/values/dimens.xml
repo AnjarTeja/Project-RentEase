@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spacing -->
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">12dp</dimen>
+    <dimen name="space_lg">16dp</dimen>
+    <dimen name="space_xl">20dp</dimen>
+    <dimen name="space_xxl">24dp</dimen>
+    <dimen name="space_xxxl">32dp</dimen>
+
+    <!-- Page padding -->
+    <dimen name="page_padding_h">16dp</dimen>
+    <dimen name="page_padding_v">12dp</dimen>
+
+    <!-- Card dimensions -->
+    <dimen name="card_radius_sm">8dp</dimen>
+    <dimen name="card_radius_md">12dp</dimen>
+    <dimen name="card_radius_lg">16dp</dimen>
+    <dimen name="card_radius_xl">20dp</dimen>
+    <dimen name="card_elevation">4dp</dimen>
+    <dimen name="card_elevation_lg">8dp</dimen>
+
+    <!-- Button dimensions -->
+    <dimen name="button_height_md">40dp</dimen>
+    <dimen name="button_height_lg">48dp</dimen>
+    <dimen name="button_height_xl">56dp</dimen>
+    <dimen name="button_radius_sm">8dp</dimen>
+    <dimen name="button_radius_md">12dp</dimen>
+    <dimen name="button_radius_lg">16dp</dimen>
+
+    <!-- Icon sizes -->
+    <dimen name="icon_size_sm">16dp</dimen>
+    <dimen name="icon_size_md">20dp</dimen>
+    <dimen name="icon_size_lg">24dp</dimen>
+    <dimen name="icon_circle_size">40dp</dimen>
+    <dimen name="icon_circle_size_lg">48dp</dimen>
+    <dimen name="avatar_size">44dp</dimen>
+    <dimen name="avatar_size_lg">56dp</dimen>
+
+    <!-- Text sizes -->
+    <dimen name="text_xs">11sp</dimen>
+    <dimen name="text_sm">12sp</dimen>
+    <dimen name="text_md">14sp</dimen>
+    <dimen name="text_lg">16sp</dimen>
+    <dimen name="text_xl">18sp</dimen>
+    <dimen name="text_xxl">22sp</dimen>
+    <dimen name="text_xxxl">28sp</dimen>
+
+    <!-- Header / Top bar -->
+    <dimen name="header_height">64dp</dimen>
+    <dimen name="header_height_lg">80dp</dimen>
+
+    <!-- Search bar -->
+    <dimen name="search_bar_height">48dp</dimen>
+    <dimen name="search_bar_radius">10dp</dimen>
+
+    <!-- Menu grid -->
+    <dimen name="menu_item_width">110dp</dimen>
+    <dimen name="menu_item_height">115dp</dimen>
+
+    <!-- Stat card -->
+    <dimen name="stat_card_padding_v">10dp</dimen>
+
+    <!-- Chip -->
+    <dimen name="chip_height">36dp</dimen>
+    <dimen name="chip_radius">20dp</dimen>
+
+    <!-- Divider -->
+    <dimen name="divider_thickness">0.5dp</dimen>
+
+    <!-- Stroke widths -->
+    <dimen name="stroke_thin">0.5dp</dimen>
+    <dimen name="stroke_normal">1dp</dimen>
+    <dimen name="stroke_thick">1.5dp</dimen>
+
+    <!-- Image dimensions -->
+    <dimen name="item_image_height">200dp</dimen>
+    <dimen name="item_thumb_size">80dp</dimen>
+
+    <!-- Glow shadow -->
+    <dimen name="glow_radius">6dp</dimen>
+    <dimen name="glow_radius_lg">12dp</dimen>
+</resources>

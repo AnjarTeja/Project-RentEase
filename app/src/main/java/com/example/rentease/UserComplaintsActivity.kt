@@ -9,6 +9,7 @@ import android.widget.ListView
 import android.widget.SearchView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -44,6 +45,12 @@ class UserComplaintsActivity : AppCompatActivity() {
         initializeViews()
         setupListeners()
         loadComplaints()
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                finish()
+            }
+        })
     }
 
     private fun initializeViews() {
@@ -183,10 +190,10 @@ class UserComplaintsActivity : AppCompatActivity() {
     }
 
     private fun sendReply(complaint: Complaint, reply: String) {
-        val updates = hashMapOf<String, Any>(
+        val updates = mapOf<String, Any>(
             "replyMessage" to reply,
             "repliedAt" to System.currentTimeMillis(),
-            "repliedBy" to com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "",
+            "repliedBy" to (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""),
             "status" to Complaint.STATUS_IN_PROGRESS
         )
 
@@ -224,7 +231,4 @@ class UserComplaintsActivity : AppCompatActivity() {
             .show()
     }
 
-    override fun onBackPressed() {
-        finish()
-    }
 }

@@ -24,10 +24,10 @@ data class RentalRequest(
     val pricePerDay: Double = 0.0,
     val itemImageUrl: String = "",
     val rating: Int = 0,  // 0 = not rated, 1-5 = star rating
-    val overdueDays: Int = 0,
-    val fineAmount: Double = 0.0,
-    val actualReturnDate: String = "",
-    val isOverdue: Boolean = false
+    var overdueDays: Int = 0,
+    var fineAmount: Double = 0.0,
+    var actualReturnDate: String = "",
+    var isOverdue: Boolean = false
 ) {
     companion object {
         const val STATUS_PENDING = "pending"

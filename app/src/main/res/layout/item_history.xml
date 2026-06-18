@@ -118,7 +118,7 @@
                 android:id="@+id/tv_duration"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_stat_card_user"
+                android:background="@drawable/bg_glass_card"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="6dp"
                 android:text="2 Hari"

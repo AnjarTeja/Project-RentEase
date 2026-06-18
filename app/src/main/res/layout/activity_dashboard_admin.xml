@@ -1,13 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/dashboard_admin_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_light"
-    android:fillViewport="true"
-    android:overScrollMode="never"
-    android:scrollbars="none">
+    android:background="@drawable/bg_galaxy_deep">
+
+    <com.example.rentease.StarFieldView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.6" />
+
+    <ScrollView
+        android:id="@+id/dashboard_admin_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:overScrollMode="never"
+        android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,7 +27,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_header_admin"
+            android:background="@drawable/bg_nebula_header"
             android:orientation="vertical"
             android:paddingHorizontal="20dp"
             android:paddingTop="0dp"
@@ -39,7 +48,7 @@
                 android:id="@+id/profile_section_btn"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_stat_card"
+                android:background="@drawable/bg_glass_card"
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
@@ -107,7 +116,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginEnd="6dp"
-                    android:background="@drawable/bg_stat_card"
+                    android:background="@drawable/bg_glass_card"
                     android:gravity="center"
                     android:orientation="vertical"
                     android:paddingVertical="14dp">
@@ -132,7 +141,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginHorizontal="6dp"
-                    android:background="@drawable/bg_stat_card"
+                    android:background="@drawable/bg_glass_card"
                     android:gravity="center"
                     android:orientation="vertical"
                     android:paddingVertical="14dp">
@@ -157,7 +166,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="6dp"
-                    android:background="@drawable/bg_stat_card"
+                    android:background="@drawable/bg_glass_card"
                     android:gravity="center"
                     android:orientation="vertical"
                     android:paddingVertical="14dp">
@@ -210,7 +219,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginEnd="6dp"
-                    android:background="@drawable/bg_card_dark"
+                    android:background="@drawable/bg_card_glow_border"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
@@ -228,7 +237,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="6dp"
-                    android:background="@drawable/bg_card_dark"
+                    android:background="@drawable/bg_card_glow_border"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
@@ -254,7 +263,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginEnd="6dp"
-                    android:background="@drawable/bg_card_dark"
+                    android:background="@drawable/bg_card_glow_border"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
@@ -272,7 +281,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="6dp"
-                    android:background="@drawable/bg_card_dark"
+                    android:background="@drawable/bg_card_glow_border"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
@@ -297,7 +306,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginEnd="6dp"
-                    android:background="@drawable/bg_card_dark"
+                    android:background="@drawable/bg_card_glow_border"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
@@ -315,7 +324,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="6dp"
-                    android:background="@drawable/bg_card_dark"
+                    android:background="@drawable/bg_card_glow_border"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground"
@@ -340,3 +349,5 @@
         </LinearLayout>
     </LinearLayout>
 </ScrollView>
+
+</FrameLayout>

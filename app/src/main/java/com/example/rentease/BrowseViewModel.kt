@@ -26,6 +26,10 @@ class BrowseViewModel : ViewModel() {
     private val _errorMessage = MutableLiveData<String?>()
     val errorMessage: LiveData<String?> = _errorMessage
 
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
     private var selectedCategory: String? = null
     private var searchQuery: String = ""
     private var priceMin: Double = 0.0

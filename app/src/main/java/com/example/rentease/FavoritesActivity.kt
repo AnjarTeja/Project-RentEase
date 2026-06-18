@@ -54,9 +54,9 @@ class FavoritesActivity : AppCompatActivity() {
                 intent.putExtra("ITEM_ID", item.id)
                 startActivity(intent)
             },
-            onRemoveFavorite = { item ->
-                removeFavorite(item.id)
-            }
+    onRemoveFavorite = { item ->
+        removeFavoriteByItemId(item.id)
+    }
         )
 
         rvFavorites.layoutManager = LinearLayoutManager(this)
@@ -175,9 +175,9 @@ class FavoritesActivity : AppCompatActivity() {
         emptyState.visibility = android.view.View.VISIBLE
     }
 
-    private fun removeFavorite(favId: String) {
+    private fun removeFavoriteByItemId(itemId: String) {
         db.collection("favorites")
-            .whereEqualTo("itemId", favId)
+            .whereEqualTo("itemId", itemId)
             .whereEqualTo("userId", auth.currentUser?.uid)
             .get()
             .addOnSuccessListener { snapshot ->

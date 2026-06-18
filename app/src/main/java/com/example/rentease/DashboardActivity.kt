@@ -1,5 +1,6 @@
 package com.example.rentease
 
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -84,13 +85,17 @@ class DashboardActivity : AppCompatActivity() {
 
     // ===== TOP BAR =====
     private fun setupTopBar() {
-        // Profile avatar click -> go to profile
         findViewById<CardView>(R.id.btn_profile).setOnClickListener {
-            val intent = Intent(this, ProfileUserActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(ProfileUserActivity::class.java)
         }
+    }
 
+    private fun animateCountUp(textView: TextView, target: Int) {
+        val anim = ValueAnimator.ofInt(0, target)
+        anim.duration = 600
+        anim.interpolator = DecelerateInterpolator()
+        anim.addUpdateListener { textView.text = it.animatedValue.toString() }
+        anim.start()
     }
 
     // ===== LOAD USER DATA =====
@@ -138,90 +143,76 @@ class DashboardActivity : AppCompatActivity() {
             .whereEqualTo("renterId", uid)
             .whereEqualTo("status", "approved")
             .get()
-            .addOnSuccessListener { statActiveCount.text = it.size().toString() }
-            .addOnFailureListener { statActiveCount.text = "0" }
+            .addOnSuccessListener { animateCountUp(statActiveCount, it.size()) }
+            .addOnFailureListener { animateCountUp(statActiveCount, 0) }
 
         // Pending rentals
         firestore.collection("rentals")
             .whereEqualTo("renterId", uid)
             .whereEqualTo("status", "pending")
             .get()
-            .addOnSuccessListener { statPendingCount.text = it.size().toString() }
-            .addOnFailureListener { statPendingCount.text = "0" }
+            .addOnSuccessListener { animateCountUp(statPendingCount, it.size()) }
+            .addOnFailureListener { animateCountUp(statPendingCount, 0) }
 
         // Completed rentals
         firestore.collection("rentals")
             .whereEqualTo("renterId", uid)
             .whereEqualTo("status", "returned")
             .get()
-            .addOnSuccessListener { statCompletedCount.text = it.size().toString() }
-            .addOnFailureListener { statCompletedCount.text = "0" }
+            .addOnSuccessListener { animateCountUp(statCompletedCount, it.size()) }
+            .addOnFailureListener { animateCountUp(statCompletedCount, 0) }
+    }
+
+    private fun openActivity(activity: Class<*>, extras: ((Intent) -> Unit)? = null) {
+        val intent = Intent(this, activity)
+        extras?.invoke(intent)
+        startActivity(intent)
+        overridePendingTransition(R.anim.slide_up_in, R.anim.scale_fade_out)
     }
 
     // ===== MENU LISTENERS =====
     private fun setupMenuListeners() {
-        // Sewa Barang (Open BrowseItemsActivity)
         findViewById<LinearLayout>(R.id.menu_browse).setOnClickListener {
-            val intent = Intent(this, BrowseItemsActivity::class.java)
-            startActivity(intent)
+            openActivity(BrowseItemsActivity::class.java)
         }
 
-        // Tambah Barang
         findViewById<LinearLayout>(R.id.menu_add_item).setOnClickListener {
-            val intent = Intent(this, AddEditItemActivity::class.java)
-            intent.putExtra("IS_USER", true)
-            startActivity(intent)
+            openActivity(AddEditItemActivity::class.java) { it.putExtra("IS_USER", true) }
         }
 
-        // Transaksi Saya
         findViewById<LinearLayout>(R.id.menu_my_transactions).setOnClickListener {
-            val intent = Intent(this, MyTransactionsActivity::class.java)
-            startActivity(intent)
+            openActivity(MyTransactionsActivity::class.java)
         }
 
-        // Barang Saya
         findViewById<LinearLayout>(R.id.menu_my_items).setOnClickListener {
-            val intent = Intent(this, MyItemsActivity::class.java)
-            startActivity(intent)
+            openActivity(MyItemsActivity::class.java)
         }
 
-        // Permintaan Sewa (Incoming Rentals for Item Owner)
         findViewById<LinearLayout>(R.id.menu_incoming_rentals).setOnClickListener {
-            val intent = Intent(this, IncomingRentalsActivity::class.java)
-            startActivity(intent)
+            openActivity(IncomingRentalsActivity::class.java)
         }
 
-        // Riwayat
         findViewById<LinearLayout>(R.id.menu_history).setOnClickListener {
-            val intent = Intent(this, HistoryActivity::class.java)
-            startActivity(intent)
+            openActivity(HistoryActivity::class.java)
         }
 
-        // Favorit
         findViewById<LinearLayout>(R.id.menu_favorites).setOnClickListener {
-            val intent = Intent(this, FavoritesActivity::class.java)
-            startActivity(intent)
+            openActivity(FavoritesActivity::class.java)
         }
 
-        // Pesan
         findViewById<LinearLayout>(R.id.menu_chat).setOnClickListener {
-            val intent = Intent(this, ChatListActivity::class.java)
-            startActivity(intent)
+            openActivity(ChatListActivity::class.java)
         }
 
-        // Bantuan
         findViewById<LinearLayout>(R.id.menu_help).setOnClickListener {
-            val intent = Intent(this, HelpActivity::class.java)
-            startActivity(intent)
+            openActivity(HelpActivity::class.java)
         }
     }
 
     // ===== ITEMS GRID =====
     private fun setupItemsGrid() {
         adapter = BrowseItemAdapter(itemList) { item ->
-            val intent = Intent(this, ItemDetailActivity::class.java)
-            intent.putExtra("ITEM_ID", item.id)
-            startActivity(intent)
+            openActivity(ItemDetailActivity::class.java) { it.putExtra("ITEM_ID", item.id) }
         }
 
         rvItems.layoutManager = GridLayoutManager(this, 2)

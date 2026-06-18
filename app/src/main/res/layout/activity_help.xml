@@ -453,7 +453,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="@drawable/bg_header_petugas"
+        android:background="@drawable/bg_nebula_header"
         android:orientation="vertical"
         android:paddingTop="12dp"
         android:paddingBottom="12dp"

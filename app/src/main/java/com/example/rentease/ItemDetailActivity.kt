@@ -1,5 +1,6 @@
 package com.example.rentease
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -116,24 +117,42 @@ class ItemDetailActivity : AppCompatActivity() {
     }
 
     private fun removeFavorite() {
+        val onDeleteSuccess = {
+            isFavorite = false
+            favoriteDocId = null
+            findViewById<ImageButton>(R.id.btn_favorite).setImageResource(R.drawable.ic_favorite)
+            Toast.makeText(this, "Dihapus dari favorit", Toast.LENGTH_SHORT).show()
+        }
+
         if (favoriteDocId != null) {
             firestore.collection("favorites").document(favoriteDocId!!).delete()
+                .addOnSuccessListener { onDeleteSuccess() }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Gagal menghapus favorit", Toast.LENGTH_SHORT).show()
+                }
         } else {
             firestore.collection("favorites")
                 .whereEqualTo("userId", auth.currentUser?.uid)
                 .whereEqualTo("itemId", itemId)
                 .get()
                 .addOnSuccessListener { snapshot ->
+                    var deleted = 0
+                    val total = snapshot.size()
                     for (doc in snapshot) {
                         firestore.collection("favorites").document(doc.id).delete()
+                            .addOnSuccessListener {
+                                deleted++
+                                if (deleted >= total) onDeleteSuccess()
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(this, "Gagal menghapus favorit", Toast.LENGTH_SHORT).show()
+                            }
                     }
                 }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Gagal menghapus favorit", Toast.LENGTH_SHORT).show()
+                }
         }
-
-        isFavorite = false
-        favoriteDocId = null
-        findViewById<ImageButton>(R.id.btn_favorite).setImageResource(R.drawable.ic_favorite)
-        Toast.makeText(this, "Dihapus dari favorit", Toast.LENGTH_SHORT).show()
     }
 
     private fun loadItemDetails() {

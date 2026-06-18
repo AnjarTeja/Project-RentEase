@@ -1,9 +1,11 @@
 package com.example.rentease
 
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -17,7 +19,6 @@ import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.data.PieData
 import com.github.mikephil.charting.data.PieDataSet
 import com.github.mikephil.charting.data.PieEntry
-import com.github.mikephil.charting.utils.ColorTemplate
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -49,6 +50,21 @@ class DashboardAdminActivity : AppCompatActivity() {
         // Reload profile data and stats whenever activity comes back to focus
         refreshProfileHeader()
         loadStats()
+    }
+
+    private fun openActivity(activity: Class<*>, extras: ((Intent) -> Unit)? = null) {
+        val intent = Intent(this, activity)
+        extras?.invoke(intent)
+        startActivity(intent)
+        overridePendingTransition(R.anim.slide_up_in, R.anim.scale_fade_out)
+    }
+
+    private fun animateCountUp(textView: TextView, target: Int) {
+        val anim = ValueAnimator.ofInt(0, target)
+        anim.duration = 600
+        anim.interpolator = DecelerateInterpolator()
+        anim.addUpdateListener { textView.text = it.animatedValue.toString() }
+        anim.start()
     }
 
     private fun refreshProfileHeader() {
@@ -105,48 +121,33 @@ class DashboardAdminActivity : AppCompatActivity() {
         )
 
         findViewById<LinearLayout>(R.id.profile_section_btn).setOnClickListener {
-            val intent = Intent(this, ProfileAdminActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(ProfileAdminActivity::class.java)
         }
     }
 
     private fun setupMenuButtons() {
-        // Manage Users - navigate to ManageUsersActivity
         findViewById<LinearLayout>(R.id.manage_users_btn).setOnClickListener {
-            val intent = Intent(this, ManageUsersActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(ManageUsersActivity::class.java)
         }
 
-        // Manage Staff - navigate to ManageUsersActivity (shows all users, staff management)
         findViewById<LinearLayout>(R.id.manage_staff_btn).setOnClickListener {
-            val intent = Intent(this, ManageUsersActivity::class.java)
-            intent.putExtra("FILTER_STAFF", true)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(ManageUsersActivity::class.java) { it.putExtra("FILTER_STAFF", true) }
         }
 
         findViewById<LinearLayout>(R.id.view_reports_btn).setOnClickListener {
-            val intent = Intent(this, ViewReportsActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(ViewReportsActivity::class.java)
         }
 
-        // System Statistics - show summary dialog
         findViewById<LinearLayout>(R.id.system_stats_btn).setOnClickListener {
             showSystemStatsDialog()
         }
 
-        // System Settings - show settings info
         findViewById<LinearLayout>(R.id.system_settings_btn).setOnClickListener {
             showSystemSettingsDialog()
         }
 
         findViewById<LinearLayout>(R.id.customer_service_btn).setOnClickListener {
-            val intent = Intent(this, CustomerServiceActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            openActivity(CustomerServiceActivity::class.java)
         }
     }
 
@@ -257,19 +258,16 @@ class DashboardAdminActivity : AppCompatActivity() {
     }
 
     private fun loadStats() {
-        // Total Users
         db.collection("users").get().addOnSuccessListener { snapshot ->
-            findViewById<TextView>(R.id.stat_total_users).text = snapshot.size().toString()
+            animateCountUp(findViewById(R.id.stat_total_users), snapshot.size())
         }
 
-        // Total Transactions (Rentals)
         db.collection("rentals").get().addOnSuccessListener { snapshot ->
-            findViewById<TextView>(R.id.stat_total_transactions).text = snapshot.size().toString()
+            animateCountUp(findViewById(R.id.stat_total_transactions), snapshot.size())
         }
 
-        // Total Items
         db.collection("items").get().addOnSuccessListener { snapshot ->
-            findViewById<TextView>(R.id.stat_total_items).text = snapshot.size().toString()
+            animateCountUp(findViewById(R.id.stat_total_items), snapshot.size())
         }
     }
 

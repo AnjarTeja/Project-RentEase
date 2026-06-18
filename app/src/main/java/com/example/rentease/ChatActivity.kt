@@ -129,6 +129,9 @@ class ChatActivity : AppCompatActivity() {
                                     "lastMessageTime" to System.currentTimeMillis()
                                 )
                             )
+                            .addOnFailureListener {
+                                // Silently handled — message was already sent
+                            }
                         etMessage.setText("")
                     }
                     .addOnFailureListener {
