@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,7 +67,10 @@ fun CustomerServiceScreen(
             },
             onFailure = { userRole = "petugas" }
         )
-        db.collection("support_tickets")
+    }
+
+    DisposableEffect(Unit) {
+        val listenerRegistration = db.collection("support_tickets")
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshots, _ ->
                 if (snapshots != null) {
@@ -76,6 +80,9 @@ fun CustomerServiceScreen(
                     loading = false
                 }
             }
+        onDispose {
+            listenerRegistration.remove()
+        }
     }
 
     GalaxyBackground(starAlpha = 0.3f) {

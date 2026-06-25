@@ -29,10 +29,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import android.widget.Toast
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.rentease.Item
+import com.example.rentease.NotificationHelper
 import com.example.rentease.RentalRequest
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
@@ -59,6 +62,7 @@ fun VerifyRentalScreen(
     onBack: () -> Unit = {}
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
+    val context = LocalContext.current
     var rentals by remember { mutableStateOf(listOf<RentalRequest>()) }
     var currentTab by remember { mutableStateOf(RentalRequest.STATUS_PENDING) }
     var isLoading by remember { mutableStateOf(true) }
@@ -126,6 +130,8 @@ fun VerifyRentalScreen(
                     if (currentStock <= 0) {
                         isProcessing = false
                         showConfirmDialog = false
+                        rentalToAct = null
+                        Toast.makeText(context, "Stok barang habis, tidak dapat menyetujui", Toast.LENGTH_SHORT).show()
                         return@addOnSuccessListener
                     }
                     val newStock = currentStock - 1
@@ -136,6 +142,7 @@ fun VerifyRentalScreen(
 
                     val itemRef = db.collection("items").document(rental.itemId)
                     batch.update(itemRef, "stock", newStock)
+                    batch.update(itemRef, "rentCount", com.google.firebase.firestore.FieldValue.increment(1))
                     if (newStock <= 0) batch.update(itemRef, "status", Item.STATUS_RENTED)
 
                     batch.commit()
@@ -143,6 +150,7 @@ fun VerifyRentalScreen(
                             isProcessing = false
                             showConfirmDialog = false
                             rentalToAct = null
+                            NotificationHelper.showRentalStatusNotification(context, rental.itemName, newStatus)
                             loadRentals()
                         }
                         .addOnFailureListener { isProcessing = false; showConfirmDialog = false }
@@ -158,6 +166,7 @@ fun VerifyRentalScreen(
                     isProcessing = false
                     showConfirmDialog = false
                     rentalToAct = null
+                    NotificationHelper.showRentalStatusNotification(context, rental.itemName, newStatus)
                     loadRentals()
                 }
                 .addOnFailureListener { isProcessing = false; showConfirmDialog = false }

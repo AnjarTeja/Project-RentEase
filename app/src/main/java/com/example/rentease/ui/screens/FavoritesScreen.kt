@@ -1,5 +1,6 @@
 package com.example.rentease.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
@@ -35,9 +35,9 @@ import coil.compose.AsyncImage
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.Item
 import com.example.rentease.ui.components.AppToolbar
+import com.example.rentease.ui.components.CategoryFilterChips
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
-import com.example.rentease.ui.components.GlowCard
 import com.example.rentease.ui.navigation.Screen
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
@@ -56,6 +56,7 @@ fun FavoritesScreen(
     val authManager = remember { FirebaseAuthManager() }
     val favoriteItems = remember { mutableStateListOf<Item>() }
     var isLoading by remember { mutableStateOf(true) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     fun loadFavorites() {
         val uid = authManager.getCurrentUserUID() ?: return
@@ -92,7 +93,7 @@ fun FavoritesScreen(
                                         approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
                                         rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
                                         stock = (doc.getLong("stock") ?: 1L).toInt(),
-                                        category = doc.getString("category") ?: Item.CATEGORY_OTHER
+                                        category = doc.getString("category") ?: Item.CATEGORY_CAMERA
                                     )
                                 )
                             }
@@ -133,6 +134,9 @@ fun FavoritesScreen(
                 }
                 favoriteItems.removeAll { it.id == itemId }
             }
+            .addOnFailureListener {
+                favoriteItems.removeAll { it.id == itemId }
+            }
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
@@ -148,42 +152,59 @@ fun FavoritesScreen(
                     Text("Belum ada favorit", color = TextLight)
                 }
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(favoriteItems) { item ->
-                        GlassCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            radius = 12.dp
+                Column(modifier = Modifier.fillMaxSize()) {
+                    CategoryFilterChips(
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = { selectedCategory = it },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    val displayItems = if (selectedCategory == null) favoriteItems
+                        else favoriteItems.filter { it.category == selectedCategory }
+                    if (displayItems.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Tidak ada favorit di kategori ini", color = TextLight)
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                AsyncImage(
-                                    model = item.imageUrl,
-                                    contentDescription = item.name,
-                                    modifier = Modifier.fillMaxWidth().height(100.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = item.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = TextDark,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = NumberFormat.getCurrencyInstance(Locale("id", "ID")).format(item.price) + "/hari",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Primary
-                                )
-                                IconButton(
-                                    onClick = { removeFavorite(item.id) },
-                                    modifier = Modifier.align(Alignment.End)
+                            items(displayItems) { item ->
+                                GlassCard(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { navController.navigate(Screen.ItemDetail.createRoute(item.id)) },
+                                    radius = 12.dp
                                 ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = ErrorColor)
+                                    Column(modifier = Modifier.padding(8.dp)) {
+                                        AsyncImage(
+                                            model = item.imageUrl,
+                                            contentDescription = item.name,
+                                            modifier = Modifier.fillMaxWidth().height(100.dp),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = item.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = TextDark,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = NumberFormat.getCurrencyInstance(Locale("id", "ID")).format(item.price) + "/hari",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Primary
+                                        )
+                                        IconButton(
+                                            onClick = { removeFavorite(item.id) },
+                                            modifier = Modifier.align(Alignment.End)
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = ErrorColor)
+                                        }
+                                    }
                                 }
                             }
                         }

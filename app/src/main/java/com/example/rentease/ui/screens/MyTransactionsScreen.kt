@@ -48,7 +48,6 @@ import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextLight
 import com.example.rentease.ui.theme.WarningColor
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 
 @Composable
 fun MyTransactionsScreen(
@@ -68,43 +67,26 @@ fun MyTransactionsScreen(
 
         val statusList = when (selectedTabIndex) {
             0 -> listOf(RentalRequest.STATUS_PENDING)
-            1 -> listOf(RentalRequest.STATUS_APPROVED, "return_pending")
+            1 -> listOf(RentalRequest.STATUS_APPROVED, RentalRequest.STATUS_RETURN_PENDING)
             2 -> listOf(RentalRequest.STATUS_RETURNED, RentalRequest.STATUS_REJECTED)
             else -> listOf(RentalRequest.STATUS_PENDING)
         }
 
         db.collection("rentals")
             .whereEqualTo("renterId", uid)
-            .whereIn("status", statusList)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .get()
             .addOnSuccessListener { docs ->
                 val result = docs.mapNotNull { doc ->
                     try {
                         doc.toObject(RentalRequest::class.java).copy(id = doc.id)
                     } catch (e: Exception) { null }
-                }
+                }.filter { it.status in statusList }
+                    .sortedByDescending { it.createdAt }
                 transactions.clear()
                 transactions.addAll(result)
                 isLoading = false
             }
-            .addOnFailureListener {
-                db.collection("rentals")
-                    .whereEqualTo("renterId", uid)
-                    .get()
-                    .addOnSuccessListener { docs ->
-                        val result = docs.mapNotNull { doc ->
-                            try {
-                                doc.toObject(RentalRequest::class.java).copy(id = doc.id)
-                            } catch (e: Exception) { null }
-                        }.filter { it.status in statusList }
-                            .sortedByDescending { it.createdAt }
-                        transactions.clear()
-                        transactions.addAll(result)
-                        isLoading = false
-                    }
-                    .addOnFailureListener { isLoading = false }
-            }
+            .addOnFailureListener { isLoading = false }
     }
 
     LaunchedEffect(selectedTabIndex) {
@@ -117,7 +99,7 @@ fun MyTransactionsScreen(
             RentalRequest.STATUS_APPROVED -> "Disetujui" to SuccessColor
             RentalRequest.STATUS_REJECTED -> "Ditolak" to ErrorColor
             RentalRequest.STATUS_RETURNED -> "Selesai" to Primary
-            "return_pending" -> "Menunggu Verifikasi" to WarningColor
+            RentalRequest.STATUS_RETURN_PENDING -> "Menunggu Verifikasi" to WarningColor
             else -> status to TextLight
         }
         RoleBadge(role = label, textColor = color)

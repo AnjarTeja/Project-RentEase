@@ -1,5 +1,6 @@
 package com.example.rentease.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -42,15 +44,16 @@ import coil.compose.AsyncImage
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.Item
 import com.example.rentease.ui.components.AppToolbar
+import com.example.rentease.ui.components.CategoryFilterChips
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
-import com.example.rentease.ui.components.GlowButton
-import com.example.rentease.ui.components.GlowCard
 import com.example.rentease.ui.components.RoleBadge
 import com.example.rentease.ui.navigation.Screen
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
+import com.example.rentease.ui.theme.PurpleAccent
 import com.example.rentease.ui.theme.SuccessColor
+import com.example.rentease.ui.theme.TechCardBg
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
@@ -70,6 +73,7 @@ fun MyItemsScreen(
     val filteredItems = remember { mutableStateListOf<Item>() }
     var isLoading by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
     var deleteTarget by remember { mutableStateOf<Item?>(null) }
 
     fun loadItems() {
@@ -93,7 +97,7 @@ fun MyItemsScreen(
                             approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
                             rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
                             stock = (doc.getLong("stock") ?: 1L).toInt(),
-                            category = doc.getString("category") ?: Item.CATEGORY_OTHER
+                            category = doc.getString("category") ?: Item.CATEGORY_CAMERA
                         )
                     } catch (e: Exception) { null }
                 }.sortedByDescending { it.createdAt }
@@ -110,37 +114,36 @@ fun MyItemsScreen(
         loadItems()
     }
 
-    fun applySearch(query: String) {
+    fun applySearch(query: String, category: String? = selectedCategory) {
         searchQuery = query
-        filteredItems.clear()
-        if (query.isBlank()) {
-            filteredItems.addAll(allItems)
-        } else {
-            filteredItems.addAll(allItems.filter { it.name.contains(query, ignoreCase = true) })
+        var result = allItems.toList()
+        if (query.isNotBlank()) {
+            result = result.filter { it.name.contains(query, ignoreCase = true) }
         }
+        if (category != null) {
+            result = result.filter { it.category == category }
+        }
+        filteredItems.clear()
+        filteredItems.addAll(result)
     }
 
     fun deleteItem(item: Item) {
         db.collection("rentals")
             .whereEqualTo("itemId", item.id)
-            .whereIn("status", listOf("pending", "approved"))
             .get()
             .addOnSuccessListener { snapshot ->
-                if (snapshot.isEmpty) {
+                val hasActiveRental = snapshot.documents.any { doc ->
+                    val s = doc.getString("status")
+                    s == "pending" || s == "approved"
+                }
+                if (hasActiveRental) {
+                    deleteTarget = null
+                } else {
                     db.collection("items").document(item.id).delete()
-                        .addOnSuccessListener {
-                            deleteTarget = null
-                            loadItems()
-                        }
+                        .addOnSuccessListener { deleteTarget = null; loadItems() }
                 }
             }
-            .addOnFailureListener {
-                db.collection("items").document(item.id).delete()
-                    .addOnSuccessListener {
-                        deleteTarget = null
-                        loadItems()
-                    }
-            }
+            .addOnFailureListener { deleteTarget = null }
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
@@ -149,7 +152,7 @@ fun MyItemsScreen(
                 title = "Barang Saya",
                 onBackClick = onBack,
                 trailingIcon = {
-                    IconButton(onClick = { navController.navigate(Screen.AddEditItem.createRoute()) }) {
+                    IconButton(onClick = { navController.navigate(Screen.AddEditItem.createRoute(fromUser = true)) }) {
                         Icon(Icons.Default.Add, contentDescription = "Tambah", tint = Primary)
                     }
                 }
@@ -170,6 +173,16 @@ fun MyItemsScreen(
                     focusedTextColor = TextDark,
                     unfocusedTextColor = TextDark
                 )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            CategoryFilterChips(
+                selectedCategory = selectedCategory,
+                onCategorySelected = {
+                    selectedCategory = it
+                    applySearch(searchQuery, it)
+                }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -197,7 +210,10 @@ fun MyItemsScreen(
                                 AsyncImage(
                                     model = item.imageUrl,
                                     contentDescription = item.name,
-                                    modifier = Modifier.width(80.dp).height(80.dp),
+                                    modifier = Modifier
+                                        .width(80.dp).height(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(TechCardBg),
                                     contentScale = ContentScale.Crop
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -221,10 +237,14 @@ fun MyItemsScreen(
                                                 else -> TextLight
                                             }
                                         )
+                                        if (item.approvalStatus == Item.APPROVAL_PENDING) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            RoleBadge(role = "Pending", textColor = PurpleAccent)
+                                        }
                                     }
                                 }
                                 Column {
-                                    IconButton(onClick = { navController.navigate(Screen.AddEditItem.createRoute(item.id)) }) {
+                                    IconButton(onClick = { navController.navigate(Screen.AddEditItem.createRoute(item.id, fromUser = true)) }) {
                                         Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Primary)
                                     }
                                     IconButton(onClick = { deleteTarget = item }) {
@@ -254,7 +274,7 @@ fun MyItemsScreen(
                     Text("Batal", color = TextLight)
                 }
             },
-            containerColor = com.example.rentease.ui.theme.TechCardBg
+            containerColor = TechCardBg
         )
     }
 }

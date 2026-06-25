@@ -26,10 +26,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.rentease.Item
+import com.example.rentease.NotificationHelper
 import com.example.rentease.RentalRequest
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
@@ -55,6 +57,7 @@ fun ManageReturnsScreen(
     onBack: () -> Unit = {}
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
+    val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val rentals = remember { mutableStateListOf<RentalRequest>() }
     var isLoading by remember { mutableStateOf(true) }
@@ -174,7 +177,6 @@ fun ManageReturnsScreen(
         if (rental.itemId.isNotEmpty()) {
             val itemRef = db.collection("items").document(rental.itemId)
             batch.update(itemRef, "status", Item.STATUS_AVAILABLE)
-            batch.update(itemRef, "rentCount", com.google.firebase.firestore.FieldValue.increment(1))
             batch.update(itemRef, "stock", com.google.firebase.firestore.FieldValue.increment(1))
         }
 
@@ -183,6 +185,7 @@ fun ManageReturnsScreen(
                 isProcessing = false
                 showReturnDialog = false
                 rentalToReturn = null
+                NotificationHelper.showRentalStatusNotification(context, rental.itemName, "returned")
                 loadRentals()
             }
             .addOnFailureListener {

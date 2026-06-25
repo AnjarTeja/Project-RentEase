@@ -58,6 +58,8 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.Item
+import com.example.rentease.RentalRequest
+import com.example.rentease.ui.components.CategoryFilterChips
 import com.example.rentease.ui.components.ExitConfirmDialog
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
@@ -97,11 +99,13 @@ fun DashboardUserScreen(
     val authManager = remember { FirebaseAuthManager() }
     val db = remember { FirebaseFirestore.getInstance() }
     var userName by remember { mutableStateOf("Pengguna") }
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var statsActive by remember { mutableStateOf("-") }
     var statsPending by remember { mutableStateOf("-") }
     var statsCompleted by remember { mutableStateOf("-") }
     val myItems = remember { mutableStateListOf<Item>() }
     var itemsLoading by remember { mutableStateOf(true) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -119,7 +123,7 @@ fun DashboardUserScreen(
     val menus = remember {
         listOf(
             UserMenuItem("Cari Barang", Icons.Default.Search, Screen.BrowseItems.route, Primary),
-            UserMenuItem("Tambah Barang", Icons.Default.Add, Screen.AddEditItem.route, SuccessColor),
+            UserMenuItem("Tambah Barang", Icons.Default.Add, Screen.AddEditItem.createRoute(fromUser = true), SuccessColor),
             UserMenuItem("Transaksi Saya", Icons.Default.ShoppingCart, Screen.MyTransactions.route, Primary),
             UserMenuItem("Barang Saya", Icons.Default.Inventory, Screen.MyItems.route, WarningColor),
             UserMenuItem("Penyewaan Masuk", Icons.Default.Inbox, Screen.IncomingRentals.route, Primary),
@@ -132,14 +136,21 @@ fun DashboardUserScreen(
 
     LaunchedEffect(Unit) {
         authManager.getUserData(
-            onSuccess = { data -> userName = (data["name"] as? String) ?: "Pengguna" },
+            onSuccess = { data -> 
+                userName = (data["name"] as? String) ?: "Pengguna" 
+                profileImageUrl = data["profileImageUrl"] as? String
+            },
             onFailure = { userName = "Pengguna" }
         )
         val uid = authManager.getCurrentUserUID() ?: return@LaunchedEffect
         try {
-            statsActive = db.collection("rentals").whereEqualTo("renterId", uid).whereEqualTo("status", "approved").get().await().size().toString()
-            statsPending = db.collection("rentals").whereEqualTo("renterId", uid).whereEqualTo("status", "pending").get().await().size().toString()
-            statsCompleted = db.collection("rentals").whereEqualTo("renterId", uid).whereEqualTo("status", "returned").get().await().size().toString()
+            val rentals = db.collection("rentals").whereEqualTo("renterId", uid).get().await()
+            val all = rentals.documents.mapNotNull {
+                it.getString("status")
+            }
+            statsPending = all.count { it == RentalRequest.STATUS_PENDING }.toString()
+            statsActive = all.count { it == RentalRequest.STATUS_APPROVED || it == RentalRequest.STATUS_RETURN_PENDING }.toString()
+            statsCompleted = all.count { it == RentalRequest.STATUS_RETURNED || it == RentalRequest.STATUS_REJECTED }.toString()
 
             val snap = db.collection("items").limit(50).get().await()
             myItems.clear()
@@ -160,7 +171,7 @@ fun DashboardUserScreen(
                         approvalStatus = app,
                         rentCount = (doc.getLong("rentCount") ?: 0).toInt(),
                         stock = (doc.getLong("stock") ?: 1).toInt(),
-                        category = doc.getString("category") ?: Item.CATEGORY_OTHER
+                        category = doc.getString("category") ?: Item.CATEGORY_CAMERA
                     )
                 } catch (_: Exception) { null }
             })
@@ -184,13 +195,37 @@ fun DashboardUserScreen(
                                 .size(54.dp)
                                 .clip(CircleShape)
                                 .border(2.dp, Primary.copy(alpha = 0.5f), CircleShape)
-                                .background(TechCardBg),
+                                .background(TechCardBg)
+                                .clickable { navController.navigate(Screen.ProfileUser.route) },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(28.dp))
+                            if (!profileImageUrl.isNullOrBlank()) {
+                                val imageModel = androidx.compose.runtime.remember(profileImageUrl) {
+                                    val url = profileImageUrl
+                                    if (url != null && url.startsWith("data:image") && url.contains("base64,")) {
+                                        try {
+                                            val base64String = url.substringAfter("base64,")
+                                            val imageBytes = android.util.Base64.decode(base64String, android.util.Base64.DEFAULT)
+                                            android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                                        } catch (e: Exception) { url }
+                                    } else { url }
+                                }
+                                AsyncImage(
+                                    model = imageModel,
+                                    contentDescription = "Foto Profil",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                    placeholder = androidx.compose.ui.res.painterResource(com.example.rentease.R.drawable.ic_launcher_foreground),
+                                    error = androidx.compose.ui.res.painterResource(com.example.rentease.R.drawable.ic_launcher_foreground)
+                                )
+                            } else {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(28.dp))
+                            }
                         }
                         Spacer(modifier = Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(
+                            modifier = Modifier.weight(1f).clickable { navController.navigate(Screen.ProfileUser.route) }
+                        ) {
                             Text(
                                 text = "Hai, $userName",
                                 style = MaterialTheme.typography.titleLarge,
@@ -199,17 +234,6 @@ fun DashboardUserScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             RoleBadge(role = "Pengguna")
-                        }
-                        IconButton(onClick = { navController.navigate(Screen.ProfileUser.route) }) {
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .clip(CircleShape)
-                                    .background(Primary.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.Edit, contentDescription = "Profil", tint = Primary, modifier = Modifier.size(20.dp))
-                            }
                         }
                     }
                 }
@@ -308,13 +332,22 @@ fun DashboardUserScreen(
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         if (!itemsLoading) {
+                            val itemCount = if (selectedCategory == null) myItems.size
+                                else myItems.count { it.category == selectedCategory }
                             Text(
-                                text = "${myItems.size} item",
+                                text = "$itemCount item",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = TextHint
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    CategoryFilterChips(
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = { selectedCategory = it }
+                    )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -389,7 +422,7 @@ fun DashboardUserScreen(
                                 )
                                 Spacer(modifier = Modifier.height(20.dp))
                                 GlassCard(
-                                    modifier = Modifier.clickable { navController.navigate(Screen.AddEditItem.route) },
+                                    modifier = Modifier.clickable { navController.navigate(Screen.AddEditItem.createRoute(fromUser = true)) },
                                     radius = 12.dp
                                 ) {
                                     Row(
@@ -404,7 +437,9 @@ fun DashboardUserScreen(
                             }
                         }
                     } else {
-                        myItems.forEach { item ->
+                        val displayItems = if (selectedCategory == null) myItems
+                            else myItems.filter { it.category == selectedCategory }
+                        displayItems.forEach { item ->
                             GlassCard(
                                 modifier = Modifier
                                     .fillMaxWidth()

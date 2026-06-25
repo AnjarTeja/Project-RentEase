@@ -34,12 +34,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.Item
+import com.example.rentease.NotificationHelper
 import com.example.rentease.RentalRequest
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
@@ -71,6 +73,7 @@ fun ItemDetailScreen(
     val db = remember { FirebaseFirestore.getInstance() }
     val auth = remember { FirebaseAuth.getInstance() }
     val authManager = remember { FirebaseAuthManager() }
+    val context = LocalContext.current
     var item by remember { mutableStateOf<Item?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf("") }
@@ -80,6 +83,7 @@ fun ItemDetailScreen(
     var rentDuration by remember { mutableStateOf("") }
     var rentNote by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
+    var userRole by remember { mutableStateOf<String?>(null) }
 
     val uid = auth.currentUser?.uid
 
@@ -99,7 +103,7 @@ fun ItemDetailScreen(
                         approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
                         rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
                         stock = (doc.getLong("stock") ?: 1L).toInt(),
-                        category = doc.getString("category") ?: Item.CATEGORY_OTHER
+                        category = doc.getString("category") ?: Item.CATEGORY_CAMERA
                     )
                     isLoading = false
                 } else {
@@ -122,6 +126,11 @@ fun ItemDetailScreen(
                         isFavorite = true
                         favoriteDocId = snapshot.documents[0].id
                     }
+                }
+
+            db.collection("users").document(uid).get()
+                .addOnSuccessListener { doc ->
+                    userRole = doc.getString("role")
                 }
         }
     }
@@ -151,6 +160,9 @@ fun ItemDetailScreen(
                 .addOnSuccessListener { doc ->
                     isFavorite = true
                     favoriteDocId = doc.id
+                }
+                .addOnFailureListener {
+                    isFavorite = false
                 }
         }
     }
@@ -208,6 +220,9 @@ fun ItemDetailScreen(
                             }
                             .addOnFailureListener { db.collection("chats").add(chat) }
 
+                        NotificationHelper.showOwnerRentalRequestNotification(
+                            context, renterName, item?.name ?: "", duration
+                        )
                         showRentDialog = false
                         isSubmitting = false
                         onBack()
@@ -304,10 +319,12 @@ fun ItemDetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (uid != currentItem.ownerId) {
+                    if (uid != currentItem.ownerId && userRole != FirebaseAuthManager.ROLE_PETUGAS) {
+                        val canRent = currentItem.status == Item.STATUS_AVAILABLE && currentItem.stock > 0
                         GlowButton(
-                            text = "Ajukan Sewa",
-                            onClick = { showRentDialog = true }
+                            text = if (canRent) "Ajukan Sewa" else "Tidak Tersedia",
+                            onClick = { showRentDialog = true },
+                            enabled = canRent
                         )
                     }
 
@@ -315,7 +332,7 @@ fun ItemDetailScreen(
 
                     GlowButton(
                         text = "Laporkan Barang",
-                        onClick = { navController.navigate(Screen.ReportItem.createRoute(itemId)) },
+                        onClick = { navController.navigate(Screen.ReportItem.createRoute(itemId, currentItem.name)) },
                         backgroundColor = ErrorColor
                     )
                 }

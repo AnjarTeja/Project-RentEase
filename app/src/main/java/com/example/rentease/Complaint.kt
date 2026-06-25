@@ -11,7 +11,8 @@ data class Complaint(
     val createdAt: Long = 0L,
     val replyMessage: String = "",
     val repliedAt: Long = 0L,
-    val repliedBy: String = ""
+    val repliedBy: String = "",
+    val repliedByName: String = ""
 ) {
     companion object {
         const val STATUS_OPEN = "open"

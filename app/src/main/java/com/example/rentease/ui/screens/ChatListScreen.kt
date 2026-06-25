@@ -33,10 +33,8 @@ import com.example.rentease.Chat
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
-
 import com.example.rentease.ui.components.GlowCard
-import com.example.rentease.ui.components.RoleBadge
-import com.example.rentease.ui.navigation.Screen
+import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
@@ -56,62 +54,17 @@ fun ChatListScreen(
     val authManager = remember { FirebaseAuthManager() }
     val chatList = remember { mutableStateListOf<Chat>() }
     var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        val uid = authManager.getCurrentUserUID() ?: return@LaunchedEffect
-
-        val allChats = mutableListOf<Chat>()
-        var renterLoaded = false
-        var ownerLoaded = false
-
-        fun finishIfDone() {
-            if (renterLoaded && ownerLoaded) {
-                allChats.sortByDescending { it.lastMessageTime }
-                chatList.clear()
-                chatList.addAll(allChats)
-                isLoading = false
-            }
-        }
-
+    fun loadChatsWithFallback(uid: String, field: String, onDone: () -> Unit) {
         db.collection("chats")
-            .whereEqualTo("renterId", uid)
+            .whereEqualTo(field, uid)
             .orderBy("lastMessageTime", Query.Direction.DESCENDING)
             .get()
             .addOnSuccessListener { snapshots ->
                 for (doc in snapshots) {
-                    allChats.add(
-                        Chat(
-                            id = doc.id,
-                            rentalId = doc.getString("rentalId") ?: "",
-                            itemId = doc.getString("itemId") ?: "",
-                            itemName = doc.getString("itemName") ?: "",
-                            renterId = doc.getString("renterId") ?: "",
-                            renterName = doc.getString("renterName") ?: "",
-                            ownerId = doc.getString("ownerId") ?: "",
-                            ownerName = doc.getString("ownerName") ?: "",
-                            lastMessage = doc.getString("lastMessage") ?: "",
-                            lastMessageTime = doc.getLong("lastMessageTime") ?: 0L,
-                            createdAt = doc.getLong("createdAt") ?: 0L
-                        )
-                    )
-                }
-                renterLoaded = true
-                finishIfDone()
-            }
-            .addOnFailureListener {
-                renterLoaded = true
-                finishIfDone()
-            }
-
-        db.collection("chats")
-            .whereEqualTo("ownerId", uid)
-            .orderBy("lastMessageTime", Query.Direction.DESCENDING)
-            .get()
-            .addOnSuccessListener { snapshots ->
-                for (doc in snapshots) {
-                    val exists = allChats.any { it.id == doc.id }
-                    if (!exists) {
-                        allChats.add(
+                    if (chatList.none { it.id == doc.id }) {
+                        chatList.add(
                             Chat(
                                 id = doc.id,
                                 rentalId = doc.getString("rentalId") ?: "",
@@ -128,13 +81,66 @@ fun ChatListScreen(
                         )
                     }
                 }
-                ownerLoaded = true
-                finishIfDone()
+                onDone()
             }
-            .addOnFailureListener {
-                ownerLoaded = true
-                finishIfDone()
+            .addOnFailureListener { e ->
+                if (e.message?.contains("index") == true || e.message?.contains("FAILED_PRECONDITION") == true) {
+                    db.collection("chats")
+                        .whereEqualTo(field, uid)
+                        .get()
+                        .addOnSuccessListener { snapshots ->
+                            for (doc in snapshots) {
+                                if (chatList.none { it.id == doc.id }) {
+                                    chatList.add(
+                                        Chat(
+                                            id = doc.id,
+                                            rentalId = doc.getString("rentalId") ?: "",
+                                            itemId = doc.getString("itemId") ?: "",
+                                            itemName = doc.getString("itemName") ?: "",
+                                            renterId = doc.getString("renterId") ?: "",
+                                            renterName = doc.getString("renterName") ?: "",
+                                            ownerId = doc.getString("ownerId") ?: "",
+                                            ownerName = doc.getString("ownerName") ?: "",
+                                            lastMessage = doc.getString("lastMessage") ?: "",
+                                            lastMessageTime = doc.getLong("lastMessageTime") ?: 0L,
+                                            createdAt = doc.getLong("createdAt") ?: 0L
+                                        )
+                                    )
+                                }
+                            }
+                            onDone()
+                        }
+                        .addOnFailureListener { onDone() }
+                } else {
+                    errorMessage = "Gagal memuat chat"
+                    onDone()
+                }
             }
+    }
+
+    LaunchedEffect(Unit) {
+        val uid = authManager.getCurrentUserUID() ?: run { isLoading = false; return@LaunchedEffect }
+        isLoading = true
+        errorMessage = null
+
+        var renterLoaded = false
+        var ownerLoaded = false
+
+        loadChatsWithFallback(uid, "renterId") {
+            renterLoaded = true
+            if (renterLoaded && ownerLoaded) {
+                chatList.sortByDescending { it.lastMessageTime }
+                isLoading = false
+            }
+        }
+
+        loadChatsWithFallback(uid, "ownerId") {
+            ownerLoaded = true
+            if (renterLoaded && ownerLoaded) {
+                chatList.sortByDescending { it.lastMessageTime }
+                isLoading = false
+            }
+        }
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
@@ -144,6 +150,10 @@ fun ChatListScreen(
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Memuat...", color = TextLight)
+                }
+            } else if (errorMessage != null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(errorMessage!!, color = ErrorColor)
                 }
             } else if (chatList.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -161,7 +171,7 @@ fun ChatListScreen(
                         GlowCard(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier.clickable {
-                                    navController.navigate(Screen.Chat.createRoute(chat.id))
+                                    navController.navigate(com.example.rentease.ui.navigation.Screen.Chat.createRoute(chat.id))
                                 },
                                 verticalAlignment = Alignment.CenterVertically
                             ) {

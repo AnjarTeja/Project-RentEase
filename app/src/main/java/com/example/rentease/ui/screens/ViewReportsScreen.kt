@@ -169,7 +169,10 @@ fun ViewReportsScreen(
                 var staffCount = 0
                 for (doc in documents) {
                     val role = doc.getString("role") ?: "user"
-                    if (role == "user") regularUserCount++ else staffCount++
+                    when (role) {
+                        "user" -> regularUserCount++
+                        "petugas", "admin" -> staffCount++
+                    }
                     list.add(
                         ReportItem(
                             title = "User: ${doc.getString("name") ?: "Tanpa Nama"}",

@@ -16,7 +16,8 @@ data class SupportTicket(
     val createdAt: Long = 0L,
     val replyMessage: String = "",
     val repliedAt: Long = 0L,
-    val repliedBy: String = "" // Petugas UID
+    val repliedBy: String = "", // Petugas UID
+    val repliedByName: String = "" // Petugas name
 ) {
     companion object {
         const val STATUS_OPEN = "open"

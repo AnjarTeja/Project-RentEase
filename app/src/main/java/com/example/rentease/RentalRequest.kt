@@ -34,5 +34,6 @@ data class RentalRequest(
         const val STATUS_APPROVED = "approved"
         const val STATUS_REJECTED = "rejected"
         const val STATUS_RETURNED = "returned"
+        const val STATUS_RETURN_PENDING = "return_pending"
     }
 }

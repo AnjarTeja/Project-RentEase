@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -32,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +53,7 @@ import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
 import com.example.rentease.ui.components.GlowButton
 import com.example.rentease.ui.components.GlowCard
+import com.example.rentease.ui.navigation.Screen
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.SuccessColor
@@ -60,6 +63,7 @@ import com.example.rentease.ui.theme.TextLight
 import com.example.rentease.ui.theme.WarningColor
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -87,7 +91,7 @@ fun HelpScreen(
             FaqItem("Metode pembayaran apa saja yang tersedia?", "Saat ini kami mendukung pembayaran tunai saat pengambilan barang (COD) atau transfer bank langsung ke pemilik barang."),
             FaqItem("Apakah saya bisa menyewakan barang milik saya?", "Tentu! Gunakan menu 'Tambah Barang' di dashboard. Barang Anda akan diverifikasi oleh petugas sebelum tampil di katalog."),
             FaqItem("Berapa lama proses verifikasi barang?", "Petugas kami akan memproses verifikasi dalam waktu maksimal 1x24 jam kerja."),
-            FaqItem("Apa yang terjadi jika saya terlambat mengembalikan?", "Anda akan dikenakan denda keterlambatan sebesar 50% dari harga sewa harian untuk setiap hari keterlambatan."),
+            FaqItem("Apa yang terjadi jika saya terlambat mengembalikan?", "Anda akan dikenakan denda keterlambatan sebesar 10% dari harga sewa harian untuk setiap hari keterlambatan."),
             FaqItem("Bagaimana jika barang yang saya sewa rusak?", "Laporkan segera melalui formulir bantuan di bawah ini. Biaya perbaikan akan didiskusikan antara penyewa dan pemilik barang."),
             FaqItem("Apakah data pribadi saya aman?", "RentEase sangat menjaga privasi Anda. Data hanya digunakan untuk keperluan verifikasi dan keamanan transaksi sewa."),
             FaqItem("Bisakah saya membatalkan pengajuan sewa?", "Bisa, selama status laporan masih 'PENDING'. Jika sudah disetujui, harap hubungi admin via WhatsApp."),
@@ -96,12 +100,27 @@ fun HelpScreen(
         )
     }
 
+    val ticketsListener = remember { mutableStateOf<ListenerRegistration?>(null) }
+
     LaunchedEffect(Unit) {
-        val userId = auth.currentUser?.uid ?: return@LaunchedEffect
-        db.collection("support_tickets")
+        val userId = auth.currentUser?.uid ?: run { loadingTickets = false; return@LaunchedEffect }
+        val reg = db.collection("support_tickets")
             .whereEqualTo("userId", userId)
             .orderBy("createdAt", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshots, _ ->
+            .addSnapshotListener { snapshots, e ->
+                if (e != null) {
+                    db.collection("support_tickets")
+                        .whereEqualTo("userId", userId)
+                        .get()
+                        .addOnSuccessListener { docs ->
+                            tickets = docs.documents.mapNotNull {
+                                it.toObject(SupportTicket::class.java)?.copy(id = it.id)
+                            }.sortedByDescending { it.createdAt }
+                            loadingTickets = false
+                        }
+                        .addOnFailureListener { loadingTickets = false }
+                    return@addSnapshotListener
+                }
                 if (snapshots != null) {
                     tickets = snapshots.documents.mapNotNull {
                         it.toObject(SupportTicket::class.java)?.copy(id = it.id)
@@ -109,6 +128,13 @@ fun HelpScreen(
                     loadingTickets = false
                 }
             }
+        ticketsListener.value = reg
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            ticketsListener.value?.remove()
+        }
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
@@ -189,7 +215,8 @@ fun HelpScreen(
                             } catch (_: Exception) {}
                         },
                         modifier = Modifier.weight(1f),
-                        backgroundColor = SuccessColor
+                        backgroundColor = SuccessColor,
+                        icon = Icons.AutoMirrored.Filled.Chat
                     )
                     GlowButton(
                         text = "Email",
@@ -204,7 +231,8 @@ fun HelpScreen(
                             } catch (_: Exception) {}
                         },
                         modifier = Modifier.weight(1f),
-                        backgroundColor = Primary
+                        backgroundColor = Primary,
+                        icon = Icons.Default.Email
                     )
                 }
 
@@ -289,7 +317,12 @@ fun HelpScreen(
                     Text("Belum ada tiket", color = TextHint)
                 } else {
                     tickets.forEach { ticket ->
-                        GlowCard(modifier = Modifier.fillMaxWidth(), radius = 12.dp) {
+                        GlowCard(
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                navController.navigate(Screen.TicketDetail.createRoute(ticket.id))
+                            },
+                            radius = 12.dp
+                        ) {
                             Column(modifier = Modifier.padding(0.dp)) {
                                 Text(ticket.subject, style = MaterialTheme.typography.bodyMedium, color = TextDark, fontWeight = FontWeight.Medium)
                                 Text(ticket.message, style = MaterialTheme.typography.bodySmall, color = TextLight, maxLines = 2)

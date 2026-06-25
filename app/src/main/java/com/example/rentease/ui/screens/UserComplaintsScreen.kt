@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +67,7 @@ fun UserComplaintsScreen(
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    var adminName by remember { mutableStateOf("Admin") }
     var allComplaints by remember { mutableStateOf(listOf<Complaint>()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
@@ -88,6 +90,16 @@ fun UserComplaintsScreen(
     val openCount = remember(allComplaints) { allComplaints.count { it.status == Complaint.STATUS_OPEN } }
     val progressCount = remember(allComplaints) { allComplaints.count { it.status == Complaint.STATUS_IN_PROGRESS } }
     val resolvedCount = remember(allComplaints) { allComplaints.count { it.status == Complaint.STATUS_RESOLVED } }
+
+    LaunchedEffect(Unit) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid != null) {
+            db.collection("users").document(uid).get()
+                .addOnSuccessListener { doc ->
+                    adminName = doc.getString("name") ?: "Admin"
+                }
+        }
+    }
 
     DisposableEffect(Unit) {
         val listener = db.collection("complaints")
@@ -120,6 +132,7 @@ fun UserComplaintsScreen(
             "replyMessage" to replyText.trim(),
             "repliedAt" to System.currentTimeMillis(),
             "repliedBy" to (FirebaseAuth.getInstance().currentUser?.uid ?: ""),
+            "repliedByName" to adminName,
             "status" to Complaint.STATUS_IN_PROGRESS
         )
         db.collection("complaints").document(complaint.id)
@@ -362,7 +375,8 @@ private fun processComplaints(
                 createdAt = doc.getLong("createdAt") ?: 0L,
                 replyMessage = doc.getString("replyMessage") ?: "",
                 repliedAt = doc.getLong("repliedAt") ?: 0L,
-                repliedBy = doc.getString("repliedBy") ?: ""
+                repliedBy = doc.getString("repliedBy") ?: "",
+                repliedByName = doc.getString("repliedByName") ?: ""
             )
         } catch (_: Exception) { null }
     }

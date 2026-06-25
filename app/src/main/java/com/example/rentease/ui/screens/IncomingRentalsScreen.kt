@@ -31,7 +31,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import androidx.navigation.NavHostController
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.RentalRequest
@@ -47,6 +49,8 @@ import com.example.rentease.ui.theme.SuccessColor
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextLight
 import com.example.rentease.ui.theme.WarningColor
+import com.example.rentease.Item
+import com.example.rentease.NotificationHelper
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import java.text.NumberFormat
@@ -59,13 +63,15 @@ fun IncomingRentalsScreen(
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
     val authManager = remember { FirebaseAuthManager() }
+    val context = LocalContext.current
     val tabTitles = listOf("Semua", "Pending", "Disetujui")
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val rentals = remember { mutableStateListOf<RentalRequest>() }
     var isLoading by remember { mutableStateOf(true) }
 
     fun loadRentals() {
-        val uid = authManager.getCurrentUserUID() ?: return
+        val uid = authManager.getCurrentUserUID()
+        if (uid == null) { isLoading = false; return }
         isLoading = true
 
         val filter = when (selectedTabIndex) {
@@ -77,7 +83,6 @@ fun IncomingRentalsScreen(
 
         db.collection("rentals")
             .whereEqualTo("ownerId", uid)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .get()
             .addOnSuccessListener { docs ->
                 val result = docs.mapNotNull { doc ->
@@ -85,27 +90,12 @@ fun IncomingRentalsScreen(
                         doc.toObject(RentalRequest::class.java).copy(id = doc.id)
                     } catch (e: Exception) { null }
                 }.filter { filter == null || it.status == filter }
+                    .sortedByDescending { it.createdAt }
                 rentals.clear()
                 rentals.addAll(result)
                 isLoading = false
             }
-            .addOnFailureListener {
-                db.collection("rentals")
-                    .whereEqualTo("ownerId", uid)
-                    .get()
-                    .addOnSuccessListener { docs ->
-                        val result = docs.mapNotNull { doc ->
-                            try {
-                                doc.toObject(RentalRequest::class.java).copy(id = doc.id)
-                            } catch (e: Exception) { null }
-                        }.filter { filter == null || it.status == filter }
-                            .sortedByDescending { it.createdAt }
-                        rentals.clear()
-                        rentals.addAll(result)
-                        isLoading = false
-                    }
-                    .addOnFailureListener { isLoading = false }
-            }
+            .addOnFailureListener { isLoading = false }
     }
 
     LaunchedEffect(selectedTabIndex) {
@@ -113,9 +103,41 @@ fun IncomingRentalsScreen(
     }
 
     fun updateStatus(rental: RentalRequest, newStatus: String) {
-        db.collection("rentals").document(rental.id)
-            .update("status", newStatus, "updatedAt", System.currentTimeMillis())
-            .addOnSuccessListener { loadRentals() }
+        if (newStatus == RentalRequest.STATUS_APPROVED && rental.itemId.isNotEmpty()) {
+            db.collection("items").document(rental.itemId).get()
+                .addOnSuccessListener { doc ->
+                    val currentStock = doc.getLong("stock")?.toInt() ?: 1
+                    if (currentStock <= 0) {
+                        Toast.makeText(context, "Stok barang habis, tidak dapat menyetujui", Toast.LENGTH_SHORT).show()
+                        loadRentals()
+                        return@addOnSuccessListener
+                    }
+                    val newStock = currentStock - 1
+                    val batch = db.batch()
+                    val rentalRef = db.collection("rentals").document(rental.id)
+                    batch.update(rentalRef, "status", newStatus)
+                    batch.update(rentalRef, "updatedAt", System.currentTimeMillis())
+
+                    val itemRef = db.collection("items").document(rental.itemId)
+                    batch.update(itemRef, "stock", newStock)
+                    batch.update(itemRef, "rentCount", com.google.firebase.firestore.FieldValue.increment(1))
+                    if (newStock <= 0) batch.update(itemRef, "status", Item.STATUS_RENTED)
+
+                    batch.commit().addOnSuccessListener {
+                        NotificationHelper.showRentalStatusNotification(context, rental.itemName, newStatus)
+                        loadRentals()
+                    }
+                }
+        } else {
+            val batch = db.batch()
+            val rentalRef = db.collection("rentals").document(rental.id)
+            batch.update(rentalRef, "status", newStatus)
+            batch.update(rentalRef, "updatedAt", System.currentTimeMillis())
+            batch.commit().addOnSuccessListener {
+                NotificationHelper.showRentalStatusNotification(context, rental.itemName, newStatus)
+                loadRentals()
+            }
+        }
     }
 
     fun statusBadge(status: String): @Composable () -> Unit = {

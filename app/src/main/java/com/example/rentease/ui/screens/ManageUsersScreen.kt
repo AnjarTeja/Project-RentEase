@@ -1,7 +1,5 @@
 package com.example.rentease.ui.screens
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,14 +10,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,7 +51,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ManageUsersScreen(
     navController: NavHostController,
@@ -156,13 +156,7 @@ fun ManageUsersScreen(
                                 val createdAt = user["createdAt"] as? Long
 
                                 GlassCard(
-                                    modifier = Modifier.fillMaxWidth().combinedClickable(
-                                        onClick = { },
-                                        onLongClick = {
-                                            userToDelete = user
-                                            showDeleteDialog = true
-                                        }
-                                    )
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(4.dp),
@@ -186,6 +180,12 @@ fun ManageUsersScreen(
                                             }
                                         }
                                         RoleBadge(role = role, textColor = if (role == "admin") PurpleAccent else Primary)
+                                        IconButton(onClick = {
+                                            userToDelete = user
+                                            showDeleteDialog = true
+                                        }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = ErrorColor, modifier = Modifier.size(20.dp))
+                                        }
                                     }
                                 }
                             }

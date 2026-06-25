@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
@@ -26,6 +27,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -44,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.rentease.Item
 import com.example.rentease.ui.components.AppToolbar
+import com.example.rentease.ui.components.CategoryFilterChips
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
 import com.example.rentease.ui.components.GlowButton
@@ -71,6 +74,7 @@ fun ManageItemsScreen(
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     var items by remember { mutableStateOf(listOf<Item>()) }
     var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -99,7 +103,7 @@ fun ManageItemsScreen(
                             approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
                             rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
                             stock = (doc.getLong("stock") ?: 1L).toInt(),
-                            category = doc.getString("category") ?: Item.CATEGORY_OTHER
+                            category = doc.getString("category") ?: Item.CATEGORY_CAMERA
                         )
                     } catch (_: Exception) { null }
                 }
@@ -123,7 +127,7 @@ fun ManageItemsScreen(
                                         approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
                                         rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
                                         stock = (doc.getLong("stock") ?: 1L).toInt(),
-                                        category = doc.getString("category") ?: Item.CATEGORY_OTHER
+                                        category = doc.getString("category") ?: Item.CATEGORY_CAMERA
                                     )
                                 } catch (_: Exception) { null }
                             }.sortedByDescending { it.createdAt }
@@ -140,9 +144,15 @@ fun ManageItemsScreen(
             }
     }
 
-    val filteredItems = remember(items, searchQuery) {
-        if (searchQuery.isBlank()) items
-        else items.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    val filteredItems = remember(items, searchQuery, selectedCategory) {
+        var result = items
+        if (searchQuery.isNotBlank()) {
+            result = result.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        }
+        if (selectedCategory != null) {
+            result = result.filter { it.category == selectedCategory }
+        }
+        result
     }
 
     fun confirmDelete(item: Item) {
@@ -201,7 +211,18 @@ fun ManageItemsScreen(
 
     GalaxyBackground(starAlpha = 0.3f) {
         Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(title = "Kelola Barang", onBackClick = onBack)
+            AppToolbar(
+                title = "Kelola Barang",
+                onBackClick = onBack,
+                trailingIcon = {
+                    ExtendedFloatingActionButton(
+                        onClick = { navController.navigate(Screen.AddEditItem.createRoute(fromUser = false)) },
+                        containerColor = Primary,
+                        text = { Text("Tambah", color = TechCardBg) },
+                        icon = { Icon(Icons.Default.Add, contentDescription = null, tint = TechCardBg) }
+                    )
+                }
+            )
 
             OutlinedTextField(
                 value = searchQuery,
@@ -228,6 +249,12 @@ fun ManageItemsScreen(
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
+
+            CategoryFilterChips(
+                selectedCategory = selectedCategory,
+                onCategorySelected = { selectedCategory = it },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
 
             Box(modifier = Modifier.weight(1f)) {
                 when {

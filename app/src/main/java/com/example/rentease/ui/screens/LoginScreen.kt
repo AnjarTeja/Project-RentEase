@@ -53,6 +53,10 @@ import com.example.rentease.ui.theme.TextLight
 import com.example.rentease.NetworkUtils
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.example.rentease.ui.theme.ErrorColor
 
 @Composable
 fun LoginScreen(
@@ -65,6 +69,10 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    var showForgotPassword by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
+    var resetLoading by remember { mutableStateOf(false) }
+    var resetMessage by remember { mutableStateOf<String?>(null) }
 
     GalaxyBackground(starAlpha = 0.3f) {
         Column(
@@ -163,7 +171,7 @@ fun LoginScreen(
                     )
 
                     TextButton(
-                        onClick = { /* TODO: forgot password dialog */ },
+                        onClick = { resetEmail = email; resetMessage = null; showForgotPassword = true },
                         modifier = Modifier.align(Alignment.End)
                     ) {
                         Text("Lupa Kata Sandi?", color = Primary, style = MaterialTheme.typography.bodySmall)
@@ -205,6 +213,73 @@ fun LoginScreen(
                     .padding(4.dp)
             )
         }
+    }
+
+    if (showForgotPassword) {
+        AlertDialog(
+            onDismissRequest = { if (!resetLoading) showForgotPassword = false },
+            title = { Text("Reset Kata Sandi", color = TextDark) },
+            text = {
+                Column {
+                    Text("Masukkan email Anda untuk menerima link reset password.", color = TextLight, style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = resetEmail,
+                        onValueChange = { resetEmail = it },
+                        label = { Text("Email") },
+                        leadingIcon = { Icon(Icons.Default.Email, null, tint = TextHint) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,
+                            unfocusedBorderColor = TextHint.copy(alpha = 0.3f),
+                            focusedLabelColor = Primary,
+                            unfocusedLabelColor = TextHint,
+                            cursorColor = Primary,
+                            focusedTextColor = TextDark,
+                            unfocusedTextColor = TextDark
+                        )
+                    )
+                    if (resetMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(resetMessage!!, color = if (resetMessage!!.startsWith("Link")) Primary else ErrorColor, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (resetEmail.isBlank()) {
+                            Toast.makeText(context, "Masukkan email", Toast.LENGTH_SHORT).show()
+                            return@TextButton
+                        }
+                        resetLoading = true
+                        authManager.sendPasswordReset(
+                            email = resetEmail.trim(),
+                            onSuccess = {
+                                resetLoading = false
+                                resetMessage = "Link reset telah dikirim ke ${resetEmail.trim()}"
+                            },
+                            onFailure = { error ->
+                                resetLoading = false
+                                resetMessage = "Gagal: $error"
+                            }
+                        )
+                    },
+                    enabled = !resetLoading
+                ) {
+                    Text(if (resetLoading) "Mengirim..." else "Kirim", color = Primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showForgotPassword = false }) {
+                    Text("Tutup", color = TextHint)
+                }
+            },
+            containerColor = TechCardBg,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }
 

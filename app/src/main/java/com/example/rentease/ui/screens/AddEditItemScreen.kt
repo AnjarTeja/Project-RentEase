@@ -3,17 +3,22 @@ package com.example.rentease.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -30,7 +35,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.rentease.FirebaseAuthManager
@@ -43,8 +50,10 @@ import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
+import com.example.rentease.ui.theme.TechCardBg
 import com.example.rentease.ui.theme.TextLight
 import com.google.firebase.firestore.FirebaseFirestore
+import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,11 +65,13 @@ fun AddEditItemScreen(
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
     val authManager = remember { FirebaseAuthManager() }
+    val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var stock by remember { mutableStateOf("1") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var existingImageUrl by remember { mutableStateOf("") }
     var selectedStatus by remember { mutableStateOf(0) }
     var selectedCategory by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(false) }
@@ -96,6 +107,7 @@ fun AddEditItemScreen(
                         stock = (s?.toInt() ?: 1).toString()
                         val imageUrl = doc.getString("imageUrl")
                         if (!imageUrl.isNullOrEmpty()) {
+                            existingImageUrl = imageUrl
                             try { selectedImageUri = Uri.parse(imageUrl) } catch (_: Exception) {}
                         }
                         val status = doc.getString("status")
@@ -105,8 +117,12 @@ fun AddEditItemScreen(
                             Item.STATUS_MAINTENANCE -> 2
                             else -> 0
                         }
-                        val category = doc.getString("category") ?: Item.CATEGORY_OTHER
-                        selectedCategory = Item.CATEGORIES.indexOf(category).coerceAtLeast(0)
+                        if (isUserMode) {
+                            selectedCategory = 0
+                        } else {
+                            val category = doc.getString("category") ?: Item.CATEGORY_CAMERA
+                            selectedCategory = Item.CATEGORIES.indexOf(category).coerceAtLeast(0)
+                        }
                     }
                     isLoading = false
                 }
@@ -139,47 +155,57 @@ fun AddEditItemScreen(
             }
         }
         val approvalStatus = if (isUserMode) Item.APPROVAL_PENDING else Item.APPROVAL_APPROVED
-        val category = categories[selectedCategory]
+        val category = if (isUserMode) categories[0] else categories[selectedCategory]
 
         isSaving = true
         errorMessage = null
 
-        val itemData = hashMapOf<String, Any>(
-            "name" to name.trim(),
-            "description" to description.trim(),
-            "price" to priceVal,
-            "stock" to stockVal,
-            "status" to statusValue,
-            "imageUrl" to (selectedImageUri?.toString() ?: ""),
-            "approvalStatus" to approvalStatus,
-            "category" to category,
-            "updatedAt" to System.currentTimeMillis()
-        )
-
         val ownerId = authManager.getCurrentUserUID() ?: ""
 
-        if (isEditMode) {
-            db.collection("items").document(itemId).update(itemData)
-                .addOnSuccessListener {
+        fun saveToFirestore(imageUrl: String) {
+            val itemData = hashMapOf<String, Any>(
+                "name" to name.trim(),
+                "description" to description.trim(),
+                "price" to priceVal,
+                "stock" to stockVal,
+                "status" to statusValue,
+                "imageUrl" to imageUrl,
+                "approvalStatus" to approvalStatus,
+                "category" to category,
+                "updatedAt" to System.currentTimeMillis()
+            )
+
+            if (isEditMode) {
+                db.collection("items").document(itemId!!).update(itemData)
+                    .addOnSuccessListener { isSaving = false; onBack() }
+                    .addOnFailureListener { isSaving = false; errorMessage = "Gagal memperbarui barang" }
+            } else {
+                itemData["createdAt"] = System.currentTimeMillis()
+                itemData["ownerId"] = ownerId
+                itemData["rentCount"] = 0
+                db.collection("items").add(itemData)
+                    .addOnSuccessListener { isSaving = false; onBack() }
+                    .addOnFailureListener { isSaving = false; errorMessage = "Gagal menambahkan barang" }
+            }
+        }
+
+        // Check if image has changed
+        val hasNewImage = selectedImageUri != null && selectedImageUri.toString() != existingImageUrl
+        if (hasNewImage) {
+            // Upload new image to Firebase Storage first
+            com.example.rentease.ImageUploadHelper.uploadImage(
+                context = context,
+                imageUri = selectedImageUri!!,
+                folder = "items",
+                onSuccess = { downloadUrl -> saveToFirestore(downloadUrl) },
+                onFailure = { msg ->
                     isSaving = false
-                    onBack()
+                    errorMessage = msg
                 }
-                .addOnFailureListener {
-                    isSaving = false
-                    errorMessage = "Gagal memperbarui barang"
-                }
+            )
         } else {
-            itemData["createdAt"] = System.currentTimeMillis()
-            itemData["ownerId"] = ownerId
-            db.collection("items").add(itemData)
-                .addOnSuccessListener {
-                    isSaving = false
-                    onBack()
-                }
-                .addOnFailureListener {
-                    isSaving = false
-                    errorMessage = "Gagal menambahkan barang"
-                }
+            // No new image, use existing URL or empty
+            saveToFirestore(if (existingImageUrl.isNotEmpty()) existingImageUrl else "")
         }
     }
 
@@ -216,12 +242,24 @@ fun AddEditItemScreen(
                         )
                     }
 
-                    if (selectedImageUri != null) {
-                        Text(
-                            "Foto terpilih",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextLight
-                        )
+                    if (selectedImageUri != null || existingImageUrl.isNotEmpty()) {
+                        val imageModel = selectedImageUri ?: existingImageUrl
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .padding(vertical = 8.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(TechCardBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = imageModel,
+                                contentDescription = "Preview foto",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
 
                     OutlinedTextField(
@@ -298,31 +336,33 @@ fun AddEditItemScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    if (!isUserMode) {
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    ExposedDropdownMenuBox(
-                        expanded = categoryExpanded,
-                        onExpandedChange = { categoryExpanded = !categoryExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = categories[selectedCategory],
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Kategori") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            colors = textFieldColors()
-                        )
-                        ExposedDropdownMenu(
+                        ExposedDropdownMenuBox(
                             expanded = categoryExpanded,
-                            onDismissRequest = { categoryExpanded = false }
+                            onExpandedChange = { categoryExpanded = !categoryExpanded },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            categories.forEachIndexed { index, cat ->
-                                DropdownMenuItem(
-                                    text = { Text(cat, color = TextDark) },
-                                    onClick = { selectedCategory = index; categoryExpanded = false }
-                                )
+                            OutlinedTextField(
+                                value = categories[selectedCategory],
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Kategori") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                colors = textFieldColors()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = categoryExpanded,
+                                onDismissRequest = { categoryExpanded = false }
+                            ) {
+                                categories.forEachIndexed { index, cat ->
+                                    DropdownMenuItem(
+                                        text = { Text(cat, color = TextDark) },
+                                        onClick = { selectedCategory = index; categoryExpanded = false }
+                                    )
+                                }
                             }
                         }
                     }

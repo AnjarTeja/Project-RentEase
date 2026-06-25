@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.SupportTicket
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
@@ -57,10 +58,25 @@ fun TicketDetailScreen(
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
     val auth = remember { FirebaseAuth.getInstance() }
+    val authManager = remember { FirebaseAuthManager() }
     var ticket by remember { mutableStateOf<SupportTicket?>(null) }
     var loading by remember { mutableStateOf(true) }
     var replyText by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
+    var petugasName by remember { mutableStateOf("Petugas") }
+    var isStaff by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val uid = auth.currentUser?.uid
+        if (uid != null) {
+            db.collection("users").document(uid).get()
+                .addOnSuccessListener { doc ->
+                    val role = doc.getString("role") ?: ""
+                    isStaff = role == "petugas" || role == "admin"
+                    petugasName = doc.getString("name") ?: "Petugas"
+                }
+        }
+    }
 
     LaunchedEffect(ticketId) {
         db.collection("support_tickets").document(ticketId).get()
@@ -136,13 +152,16 @@ fun TicketDetailScreen(
                         GlassCard(modifier = Modifier.fillMaxWidth(), radius = 12.dp) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text("Tanggapan Petugas", style = MaterialTheme.typography.titleSmall, color = SuccessColor, fontWeight = FontWeight.Medium)
+                                if (t.repliedByName.isNotEmpty()) {
+                                    Text("Oleh: ${t.repliedByName}", style = MaterialTheme.typography.labelSmall, color = TextHint)
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(t.replyMessage, style = MaterialTheme.typography.bodyMedium, color = TextLight)
                             }
                         }
                     }
 
-                    if (!isResolved) {
+                    if (isStaff && !isResolved) {
                         Text("Berikan Tanggapan", style = MaterialTheme.typography.titleSmall, color = TextDark)
                         OutlinedTextField(
                             value = replyText,
@@ -170,6 +189,7 @@ fun TicketDetailScreen(
                                     "replyMessage" to replyText,
                                     "repliedAt" to System.currentTimeMillis(),
                                     "repliedBy" to petugasId,
+                                    "repliedByName" to petugasName,
                                     "status" to SupportTicket.STATUS_RESOLVED
                                 )
                                 db.collection("support_tickets").document(ticketId)

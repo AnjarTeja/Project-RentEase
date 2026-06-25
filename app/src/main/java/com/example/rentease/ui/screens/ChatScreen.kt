@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -34,18 +35,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.rentease.ChatMessage
-import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
 import com.example.rentease.ui.theme.Primary
-import com.example.rentease.ui.theme.TechCardBg
-import com.example.rentease.ui.theme.TechDarkBg
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
-import com.example.rentease.ui.theme.TextLight
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,77 +57,94 @@ fun ChatScreen(
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
     val auth = remember { FirebaseAuth.getInstance() }
-    val authManager = remember { FirebaseAuthManager() }
     val messages = remember { mutableStateListOf<ChatMessage>() }
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-    var senderName by remember { mutableStateOf("") }
+    var isParticipant by remember { mutableStateOf(false) }
+    var myName by remember { mutableStateOf("") }
 
+    // Get current user's name
     LaunchedEffect(Unit) {
         val uid = auth.currentUser?.uid ?: return@LaunchedEffect
         db.collection("users").document(uid).get()
             .addOnSuccessListener { doc ->
-                senderName = doc.getString("name") ?: "Pengguna"
+                myName = doc.getString("name") ?: "Pengguna"
             }
     }
 
+    // Auto-scroll on new message
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
 
+    // Attach snapshot listener + cleanup on dispose
+    val listenerReg = remember { mutableStateOf<ListenerRegistration?>(null) }
+
     LaunchedEffect(chatId) {
-        db.collection("chats").document(chatId)
-            .collection("messages")
-            .orderBy("timestamp", Query.Direction.ASCENDING)
-            .addSnapshotListener { snapshots, e ->
-                if (e != null || snapshots == null) return@addSnapshotListener
-                val msgs = snapshots.mapNotNull { doc ->
-                    try {
-                        ChatMessage(
-                            id = doc.id,
-                            chatId = chatId,
-                            senderId = doc.getString("senderId") ?: "",
-                            senderName = doc.getString("senderName") ?: "",
-                            message = doc.getString("message") ?: "",
-                            timestamp = doc.getLong("timestamp") ?: 0L
-                        )
-                    } catch (e: Exception) { null }
-                }
-                messages.clear()
-                messages.addAll(msgs)
-                // auto-scroll handled by LaunchedEffect below
+        val uid = auth.currentUser?.uid ?: return@LaunchedEffect
+        db.collection("chats").document(chatId).get()
+            .addOnSuccessListener { chatDoc ->
+                val renterId = chatDoc.getString("renterId") ?: ""
+                val ownerId = chatDoc.getString("ownerId") ?: ""
+                if (uid != renterId && uid != ownerId) return@addOnSuccessListener
+                isParticipant = true
+
+                val reg = db.collection("chats").document(chatId)
+                    .collection("messages")
+                    .orderBy("timestamp", Query.Direction.ASCENDING)
+                    .addSnapshotListener { snapshots, e ->
+                        if (e != null || snapshots == null) return@addSnapshotListener
+                        val msgs = snapshots.mapNotNull { doc ->
+                            try {
+                                ChatMessage(
+                                    id = doc.id,
+                                    chatId = chatId,
+                                    senderId = doc.getString("senderId") ?: "",
+                                    senderName = doc.getString("senderName") ?: "",
+                                    message = doc.getString("message") ?: "",
+                                    timestamp = doc.getLong("timestamp") ?: 0L
+                                )
+                            } catch (e: Exception) { null }
+                        }
+                        messages.clear()
+                        messages.addAll(msgs)
+                    }
+                listenerReg.value = reg
             }
+    }
+
+    DisposableEffect(chatId) {
+        onDispose {
+            listenerReg.value?.remove()
+        }
     }
 
     fun sendMessage() {
         val text = messageText.trim()
-        if (text.isEmpty()) return
+        if (text.isEmpty() || !isParticipant) return
         val uid = auth.currentUser?.uid ?: return
+        val name = if (myName.isNotEmpty()) myName else "Pengguna"
 
-        db.collection("users").document(uid).get()
-            .addOnSuccessListener { doc ->
-                val name = doc.getString("name") ?: "Pengguna"
-                val msg = hashMapOf(
-                    "senderId" to uid,
-                    "senderName" to name,
-                    "message" to text,
-                    "timestamp" to System.currentTimeMillis()
-                )
+        val msg = hashMapOf(
+            "senderId" to uid,
+            "senderName" to name,
+            "message" to text,
+            "timestamp" to System.currentTimeMillis()
+        )
+        db.collection("chats").document(chatId)
+            .collection("messages")
+            .add(msg)
+            .addOnSuccessListener {
                 db.collection("chats").document(chatId)
-                    .collection("messages")
-                    .add(msg)
-                    .addOnSuccessListener {
-                        db.collection("chats").document(chatId)
-                            .update(
-                                mapOf(
-                                    "lastMessage" to text,
-                                    "lastMessageTime" to System.currentTimeMillis()
-                                )
-                            )
-                        messageText = ""
-                    }
+                    .update(
+                        mapOf(
+                            "lastMessage" to text,
+                            "lastMessageTime" to System.currentTimeMillis()
+                        )
+                    )
+                messageText = ""
             }
     }
 

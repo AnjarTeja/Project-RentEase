@@ -33,6 +33,7 @@ import com.example.rentease.ui.screens.ReportItemScreen
 import com.example.rentease.ui.screens.SplashScreen
 import com.example.rentease.ui.screens.TicketDetailScreen
 import com.example.rentease.ui.screens.UserComplaintsScreen
+import com.example.rentease.ui.screens.AllItemsScreen
 import com.example.rentease.ui.screens.VerifyRentalScreen
 import com.example.rentease.ui.screens.VerifyUserItemsScreen
 import com.example.rentease.ui.screens.ViewReportsScreen
@@ -181,11 +182,16 @@ fun RentEaseNavGraph(navController: NavHostController) {
 
         composable(
             route = Screen.AddEditItem.route,
-            arguments = listOf(navArgument("itemId") { type = NavType.StringType; nullable = true; defaultValue = null })
+            arguments = listOf(
+                navArgument("itemId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("fromUser") { type = NavType.BoolType; defaultValue = false }
+            )
         ) { backStackEntry ->
             val itemId = backStackEntry.arguments?.getString("itemId")
+            val fromUser = backStackEntry.arguments?.getBoolean("fromUser") ?: false
             AddEditItemScreen(
                 itemId = itemId,
+                isUserMode = fromUser,
                 navController = navController,
                 onBack = { navController.popBackStack() }
             )
@@ -289,11 +295,16 @@ fun RentEaseNavGraph(navController: NavHostController) {
 
         composable(
             route = Screen.ReportItem.route,
-            arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+            arguments = listOf(
+                navArgument("itemId") { type = NavType.StringType },
+                navArgument("itemName") { type = NavType.StringType; defaultValue = "" }
+            )
         ) { backStackEntry ->
             val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
+            val itemName = backStackEntry.arguments?.getString("itemName") ?: ""
             ReportItemScreen(
                 itemId = itemId,
+                itemName = java.net.URLDecoder.decode(itemName, "UTF-8"),
                 navController = navController,
                 onBack = { navController.popBackStack() }
             )
@@ -306,6 +317,13 @@ fun RentEaseNavGraph(navController: NavHostController) {
             val ticketId = backStackEntry.arguments?.getString("ticketId") ?: ""
             TicketDetailScreen(
                 ticketId = ticketId,
+                navController = navController,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.AllItems.route) {
+            AllItemsScreen(
                 navController = navController,
                 onBack = { navController.popBackStack() }
             )

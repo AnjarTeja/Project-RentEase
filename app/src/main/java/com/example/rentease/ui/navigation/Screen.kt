@@ -16,9 +16,13 @@ sealed class Screen(val route: String) {
     object MyItems : Screen("my_items")
     object IncomingRentals : Screen("incoming_rentals")
     object History : Screen("history")
-    object AddEditItem : Screen("add_edit_item?itemId={itemId}") {
-        fun createRoute(itemId: String? = null) =
-            if (itemId != null) "add_edit_item?itemId=$itemId" else "add_edit_item"
+    object AddEditItem : Screen("add_edit_item?itemId={itemId}&fromUser={fromUser}") {
+        fun createRoute(itemId: String? = null, fromUser: Boolean = false) =
+            buildString {
+                append("add_edit_item")
+                append("?fromUser=$fromUser")
+                if (itemId != null) append("&itemId=$itemId")
+            }
     }
     object Help : Screen("help")
     object ProfileUser : Screen("profile/user")
@@ -35,11 +39,13 @@ sealed class Screen(val route: String) {
     object Chat : Screen("chat/{chatId}") {
         fun createRoute(chatId: String) = "chat/$chatId"
     }
-    object ReportItem : Screen("report_item/{itemId}") {
-        fun createRoute(itemId: String) = "report_item/$itemId"
+    object ReportItem : Screen("report_item/{itemId}?itemName={itemName}") {
+        fun createRoute(itemId: String, itemName: String = "") =
+            "report_item/$itemId?itemName=${java.net.URLEncoder.encode(itemName, "UTF-8")}"
     }
     object TicketDetail : Screen("ticket_detail/{ticketId}") {
         fun createRoute(ticketId: String) = "ticket_detail/$ticketId"
     }
     object CustomerService : Screen("customer_service")
+    object AllItems : Screen("all_items")
 }

@@ -187,7 +187,7 @@ object FirestoreRepository {
             approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
             rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
             stock = (doc.getLong("stock") ?: 1L).toInt(),
-            category = doc.getString("category") ?: Item.CATEGORY_OTHER
+            category = doc.getString("category") ?: Item.CATEGORY_CAMERA
         )
     }
 }

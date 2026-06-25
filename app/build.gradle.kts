@@ -62,6 +62,12 @@ dependencies {
     // Image Loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
+    
+    // EXIF Interface (for image rotation fix)
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // Image Cropper
+    implementation("com.github.CanHub:Android-Image-Cropper:4.5.0")
 
     // Charts
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")

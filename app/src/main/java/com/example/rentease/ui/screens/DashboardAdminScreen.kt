@@ -23,11 +23,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
@@ -54,6 +56,8 @@ import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ui.components.MenuGridItem
 import com.example.rentease.ui.components.StatItem
 import com.example.rentease.R
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.example.rentease.ui.components.ExitConfirmDialog
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.theme.TechDarkBg
@@ -80,6 +84,7 @@ fun DashboardAdminScreen(
     val authManager = remember { FirebaseAuthManager() }
     val db = remember { FirebaseFirestore.getInstance() }
     var userName by remember { mutableStateOf("Administrator") }
+    var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var statUsers by remember { mutableStateOf("-") }
     var statTransactions by remember { mutableStateOf("-") }
     var statItems by remember { mutableStateOf("-") }
@@ -99,18 +104,24 @@ fun DashboardAdminScreen(
 
     val menus = remember {
         listOf(
+            AdminMenuItem("Cari Barang", Icons.Default.Search, Screen.BrowseItems.route, Primary),
+            AdminMenuItem("Tambah Barang", Icons.Default.Add, Screen.AddEditItem.createRoute(fromUser = false), Primary),
             AdminMenuItem("Kelola User", Icons.Default.Group, Screen.ManageUsers.route, Primary),
             AdminMenuItem("Kelola Barang", Icons.Default.Inventory, Screen.ManageItems.route, WarningColor),
+            AdminMenuItem("Verif. Rental", Icons.Default.Restore, Screen.VerifyRental.route, Primary),
+            AdminMenuItem("Verif. Barang", Icons.Default.Verified, Screen.VerifyUserItems.route, SuccessColor),
             AdminMenuItem("Pengembalian", Icons.Default.Restore, Screen.ManageReturns.route, Primary),
             AdminMenuItem("Laporan", Icons.Default.Report, Screen.ViewReports.route, PurpleAccent),
-            AdminMenuItem("Komplain", Icons.Default.SupportAgent, Screen.UserComplaints.route, SuccessColor),
-            AdminMenuItem("Verifikasi", Icons.Default.Verified, Screen.ViewReports.route, Primary)
+            AdminMenuItem("Komplain", Icons.Default.SupportAgent, Screen.UserComplaints.route, SuccessColor)
         )
     }
 
     LaunchedEffect(Unit) {
         authManager.getUserData(
-            onSuccess = { data -> userName = (data["name"] as? String) ?: "Administrator" },
+            onSuccess = { data -> 
+                userName = (data["name"] as? String) ?: "Administrator" 
+                profileImageUrl = data["profileImageUrl"] as? String
+            },
             onFailure = { userName = "Administrator" }
         )
         try {
@@ -138,7 +149,28 @@ fun DashboardAdminScreen(
                             .background(TechCardBg),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = PurpleAccent, modifier = Modifier.size(24.dp))
+                        if (!profileImageUrl.isNullOrBlank()) {
+                            val imageModel = androidx.compose.runtime.remember(profileImageUrl) {
+                                val url = profileImageUrl
+                                if (url != null && url.startsWith("data:image") && url.contains("base64,")) {
+                                    try {
+                                        val base64String = url.substringAfter("base64,")
+                                        val imageBytes = android.util.Base64.decode(base64String, android.util.Base64.DEFAULT)
+                                        android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                                    } catch (e: Exception) { url }
+                                } else { url }
+                            }
+                            AsyncImage(
+                                model = imageModel,
+                                contentDescription = "Foto Profil",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                                placeholder = androidx.compose.ui.res.painterResource(com.example.rentease.R.drawable.ic_launcher_foreground),
+                                error = androidx.compose.ui.res.painterResource(com.example.rentease.R.drawable.ic_launcher_foreground)
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = PurpleAccent, modifier = Modifier.size(24.dp))
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -182,7 +214,7 @@ fun DashboardAdminScreen(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp),
+                    .height(440.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 userScrollEnabled = false

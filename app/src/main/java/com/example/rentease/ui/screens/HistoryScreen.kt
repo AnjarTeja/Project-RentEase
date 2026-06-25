@@ -1,5 +1,6 @@
 package com.example.rentease.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.MaterialTheme
@@ -37,9 +39,11 @@ import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlowCard
 import com.example.rentease.ui.components.InfoRow
 import com.example.rentease.ui.components.RoleBadge
+import com.example.rentease.ui.navigation.Screen
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.TextDark
+import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
 import com.example.rentease.ui.theme.WarningColor
 import com.google.firebase.firestore.FirebaseFirestore
@@ -62,14 +66,14 @@ fun HistoryScreen(
 
         db.collection("rentals")
             .whereEqualTo("renterId", uid)
-            .whereIn("status", listOf(RentalRequest.STATUS_RETURNED, RentalRequest.STATUS_REJECTED))
             .get()
             .addOnSuccessListener { docs ->
                 val result = docs.mapNotNull { doc ->
                     try {
                         doc.toObject(RentalRequest::class.java).copy(id = doc.id)
                     } catch (e: Exception) { null }
-                }.sortedByDescending { it.updatedAt }
+                }.filter { it.status in listOf(RentalRequest.STATUS_RETURNED, RentalRequest.STATUS_REJECTED) }
+                    .sortedByDescending { it.updatedAt }
                 historyItems.clear()
                 historyItems.addAll(result)
                 isLoading = false
@@ -106,7 +110,11 @@ fun HistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(historyItems) { rental ->
-                        GlowCard(modifier = Modifier.fillMaxWidth()) {
+                        GlowCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate(Screen.ItemDetail.createRoute(rental.itemId)) }
+                        ) {
                             Column {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -144,6 +152,24 @@ fun HistoryScreen(
                                     value = "${rental.duration} hari",
                                     iconTint = Primary
                                 )
+                                if (rental.pricePerDay > 0) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    InfoRow(
+                                        icon = Icons.Default.AttachMoney,
+                                        label = "Total",
+                                        value = "Rp ${String.format("%,.0f", rental.pricePerDay * rental.duration)}",
+                                        iconTint = Primary
+                                    )
+                                }
+                                if (rental.isOverdue && rental.fineAmount > 0) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Terlambat ${rental.overdueDays} hari | Denda: Rp ${String.format("%,.0f", rental.fineAmount)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = ErrorColor,
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                }
                             }
                         }
                     }
