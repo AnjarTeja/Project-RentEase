@@ -1,24 +1,31 @@
 package com.example.rentease.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +72,9 @@ fun TicketDetailScreen(
     var submitting by remember { mutableStateOf(false) }
     var petugasName by remember { mutableStateOf("Petugas") }
     var isStaff by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val sdf = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID")) }
 
     LaunchedEffect(Unit) {
         val uid = auth.currentUser?.uid
@@ -78,17 +88,28 @@ fun TicketDetailScreen(
         }
     }
 
-    LaunchedEffect(ticketId) {
-        db.collection("support_tickets").document(ticketId).get()
-            .addOnSuccessListener { doc ->
-                ticket = doc.toObject(SupportTicket::class.java)?.copy(id = doc.id)
-                loading = false
-                ticket?.let {
-                    if (it.status == SupportTicket.STATUS_RESOLVED) {
-                        replyText = it.replyMessage
+    DisposableEffect(ticketId) {
+        val listener = db.collection("support_tickets").document(ticketId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    errorMessage = "Gagal memuat tiket"
+                    loading = false
+                    return@addSnapshotListener
+                }
+                if (snapshot != null && snapshot.exists()) {
+                    ticket = snapshot.toObject(SupportTicket::class.java)?.copy(id = snapshot.id)
+                    loading = false
+                    ticket?.let {
+                        if (it.status == SupportTicket.STATUS_RESOLVED) {
+                            replyText = it.replyMessage
+                        }
                     }
+                } else if (snapshot != null && !snapshot.exists()) {
+                    errorMessage = "Tiket tidak ditemukan"
+                    loading = false
                 }
             }
+        onDispose { listener.remove() }
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
@@ -97,7 +118,16 @@ fun TicketDetailScreen(
 
             if (loading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Memuat...", color = TextHint)
+                    CircularProgressIndicator(color = Primary, strokeWidth = 3.dp)
+                }
+            } else if (errorMessage != null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = errorMessage!!,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(24.dp)
+                    )
                 }
             } else if (ticket == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -105,12 +135,16 @@ fun TicketDetailScreen(
                 }
             } else {
                 val t = ticket!!
-                val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID"))
                 val isResolved = t.status == SupportTicket.STATUS_RESOLVED
                 val statusColor = when (t.status) {
                     SupportTicket.STATUS_RESOLVED -> SuccessColor
                     SupportTicket.STATUS_IN_PROGRESS -> WarningColor
                     else -> Primary
+                }
+                val statusLabel = when (t.status) {
+                    SupportTicket.STATUS_RESOLVED -> "Selesai"
+                    SupportTicket.STATUS_IN_PROGRESS -> "Diproses"
+                    else -> "Terbuka"
                 }
 
                 Column(
@@ -121,29 +155,48 @@ fun TicketDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     GlowCard(modifier = Modifier.fillMaxWidth(), radius = 12.dp) {
-                        Column(modifier = Modifier.padding(0.dp)) {
-                            Text(t.subject, style = MaterialTheme.typography.titleMedium, color = TextDark, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(8.dp))
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    t.subject,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = TextDark,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(statusColor.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        statusLabel,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = statusColor,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
                             InfoRow(icon = Icons.Default.Person, label = "Nama", value = t.userName)
                             InfoRow(icon = Icons.Default.Email, label = "Email", value = t.userEmail)
                             InfoRow(icon = Icons.Default.CalendarMonth, label = "Tanggal", value = sdf.format(Date(t.createdAt)))
-                            Spacer(modifier = Modifier.height(4.dp))
-                            GlassCard(modifier = Modifier.fillMaxWidth(), radius = 8.dp) {
-                                Text(
-                                    t.status.replace("_", " "),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = statusColor,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                )
-                            }
                         }
                     }
 
                     GlassCard(modifier = Modifier.fillMaxWidth(), radius = 12.dp) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Pesan", style = MaterialTheme.typography.titleSmall, color = TextDark, fontWeight = FontWeight.Medium)
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Pesan",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = TextDark,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
                             Text(t.message, style = MaterialTheme.typography.bodyMedium, color = TextLight)
                         }
                     }
@@ -151,18 +204,32 @@ fun TicketDetailScreen(
                     if (isResolved && t.replyMessage.isNotEmpty()) {
                         GlassCard(modifier = Modifier.fillMaxWidth(), radius = 12.dp) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Tanggapan Petugas", style = MaterialTheme.typography.titleSmall, color = SuccessColor, fontWeight = FontWeight.Medium)
+                                Text(
+                                    "Tanggapan Petugas",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = SuccessColor,
+                                    fontWeight = FontWeight.Medium
+                                )
                                 if (t.repliedByName.isNotEmpty()) {
-                                    Text("Oleh: ${t.repliedByName}", style = MaterialTheme.typography.labelSmall, color = TextHint)
+                                    Text(
+                                        "Oleh: ${t.repliedByName}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextHint
+                                    )
                                 }
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Text(t.replyMessage, style = MaterialTheme.typography.bodyMedium, color = TextLight)
                             }
                         }
                     }
 
                     if (isStaff && !isResolved) {
-                        Text("Berikan Tanggapan", style = MaterialTheme.typography.titleSmall, color = TextDark)
+                        Text(
+                            "Berikan Tanggapan",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TextDark,
+                            fontWeight = FontWeight.Medium
+                        )
                         OutlinedTextField(
                             value = replyText,
                             onValueChange = { replyText = it },

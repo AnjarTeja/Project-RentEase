@@ -1,6 +1,6 @@
 package com.example.rentease.ui.screens
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -22,6 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -32,7 +36,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -41,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -55,10 +60,13 @@ import com.example.rentease.ui.components.GlassCard
 import com.example.rentease.ui.navigation.Screen
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
+import com.example.rentease.ui.theme.PurpleAccent
+import com.example.rentease.ui.theme.SuccessColor
 import com.example.rentease.ui.theme.TechCardBg
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
+import com.example.rentease.ui.theme.WarningColor
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.NumberFormat
 import java.util.Locale
@@ -104,51 +112,45 @@ fun BrowseItemsScreen(
         filteredItems.addAll(result)
     }
 
-    LaunchedEffect(Unit) {
-        db.collection("items")
-            .whereEqualTo("status", Item.STATUS_AVAILABLE)
-            .get()
-            .addOnSuccessListener { docs ->
+    DisposableEffect(Unit) {
+        val listener = db.collection("items")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    errorMessage = "Gagal memuat barang: ${error.message}"
+                    isLoading = false
+                    return@addSnapshotListener
+                }
                 val items = mutableListOf<Item>()
-                for (doc in docs) {
-                    val approval = doc.getString("approvalStatus")
-                    if (approval == null || approval == Item.APPROVAL_APPROVED) {
-                        items.add(
-                            Item(
-                                id = doc.id,
-                                name = doc.getString("name") ?: "",
-                                description = doc.getString("description") ?: "",
-                                price = doc.getDouble("price") ?: 0.0,
-                                ownerId = doc.getString("ownerId") ?: "",
-                                status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
-                                imageUrl = doc.getString("imageUrl") ?: "",
-                                createdAt = doc.getLong("createdAt") ?: 0L,
-                                approvalStatus = approval ?: Item.APPROVAL_APPROVED,
-                                rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
-                                stock = (doc.getLong("stock") ?: 1L).toInt(),
-                                category = doc.getString("category") ?: Item.CATEGORY_CAMERA
-                            )
+                for (doc in snapshot ?: emptyList()) {
+                    items.add(
+                        Item(
+                            id = doc.id,
+                            name = doc.getString("name") ?: "",
+                            description = doc.getString("description") ?: "",
+                            price = doc.getDouble("price") ?: 0.0,
+                            ownerId = doc.getString("ownerId") ?: "",
+                            status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
+                            imageUrl = doc.getString("imageUrl") ?: "",
+                            createdAt = doc.getLong("createdAt") ?: 0L,
+                            approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
+                            rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
+                            stock = (doc.getLong("stock") ?: 1L).toInt(),
+                            category = doc.getString("category") ?: Item.CATEGORY_CAMERA
                         )
-                    }
+                    )
                 }
                 allItems.clear()
                 allItems.addAll(items.sortedByDescending { it.rentCount })
                 isLoading = false
+                errorMessage = ""
                 applyFilter()
             }
-            .addOnFailureListener { e ->
-                isLoading = false
-                errorMessage = "Gagal memuat barang: ${e.message}"
-            }
-    }
-
-    BackHandler {
-        navController.popBackStack()
+        onDispose { listener.remove() }
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
         Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(title = "Cari Barang", onBackClick = { navController.popBackStack() })
+            AppToolbar(title = "Cari Barang", onBackClick = onBack)
 
             Column(
                 modifier = Modifier
@@ -278,17 +280,26 @@ fun BrowseItemsScreen(
 
             when {
                 isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Memuat...", color = TextLight)
+                    CircularProgressIndicator(color = Primary)
                 }
                 errorMessage.isNotEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(errorMessage, color = ErrorColor)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(errorMessage, color = ErrorColor, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { isLoading = true; errorMessage = "" },
+                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                        ) {
+                            Text("Coba Lagi")
+                        }
+                    }
                 }
                 filteredItems.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         when {
                             searchQuery.isNotEmpty() -> "Barang '$searchQuery' tidak ditemukan"
                             selectedCategory != null -> "Tidak ada barang kategori $selectedCategory"
-                            else -> "Tidak ada barang tersedia"
+                            else -> "Belum ada barang tersedia"
                         },
                         color = TextLight
                     )
@@ -316,6 +327,14 @@ private fun BrowseItemCard(item: Item, onClick: () -> Unit) {
     val currencyFormat = remember {
         NumberFormat.getCurrencyInstance(Locale("id", "ID"))
     }
+
+    fun statusLabel(): Pair<String, androidx.compose.ui.graphics.Color> = when (item.status) {
+        Item.STATUS_AVAILABLE -> "Tersedia" to SuccessColor
+        Item.STATUS_RENTED -> "Disewa" to WarningColor
+        Item.STATUS_MAINTENANCE -> "Perawatan" to ErrorColor
+        else -> item.status to TextLight
+    }
+
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         radius = 12.dp
@@ -323,12 +342,48 @@ private fun BrowseItemCard(item: Item, onClick: () -> Unit) {
         Column(
             modifier = Modifier.clickable { onClick() }.padding(8.dp)
         ) {
-            AsyncImage(
-                model = item.imageUrl,
-                contentDescription = item.name,
-                modifier = Modifier.fillMaxWidth().height(120.dp),
-                contentScale = ContentScale.Crop
-            )
+            Box {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.name,
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    contentScale = ContentScale.Crop
+                )
+                val (label, color) = statusLabel()
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(color.copy(alpha = 0.85f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(label, color = TechCardBg, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+                if (item.approvalStatus == Item.APPROVAL_PENDING) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(PurpleAccent.copy(alpha = 0.85f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text("Pending", color = TechCardBg, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    }
+                } else if (item.approvalStatus == Item.APPROVAL_REJECTED) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(ErrorColor.copy(alpha = 0.85f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text("Ditolak", color = TechCardBg, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = item.name,
@@ -341,6 +396,14 @@ private fun BrowseItemCard(item: Item, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = Primary
             )
+            if (item.stock > 0) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Stok: ${item.stock}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextHint
+                )
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.rentease.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,23 +11,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -59,7 +68,7 @@ fun ManageReturnsScreen(
     val db = remember { FirebaseFirestore.getInstance() }
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
-    val rentals = remember { mutableStateListOf<RentalRequest>() }
+    var rentals by remember { mutableStateOf(listOf<RentalRequest>()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showReturnDialog by remember { mutableStateOf(false) }
@@ -68,94 +77,74 @@ fun ManageReturnsScreen(
     var overdueCount by remember { mutableStateOf(0) }
     var totalFine by remember { mutableStateOf(0.0) }
 
-    fun loadRentals() {
-        isLoading = true
-        db.collection("rentals")
-            .whereEqualTo("status", "approved")
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .get()
-            .addOnSuccessListener { documents ->
-                val list = documents.mapNotNull { doc ->
-                    try {
-                        doc.toObject(RentalRequest::class.java).copy(id = doc.id)
-                    } catch (_: Exception) { null }
+    fun processRentals(raw: List<RentalRequest>): List<RentalRequest> {
+        val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        val todayDate = sdf.parse(sdf.format(Date()))
+        var overdue = 0
+        var fine = 0.0
+        val processed = raw.map { rental ->
+            val r = rental.copy()
+            try {
+                val endDate = sdf.parse(r.endDate)
+                if (endDate != null && todayDate != null && endDate.before(todayDate)) {
+                    val diffMs = todayDate.time - endDate.time
+                    val overdueDays = (diffMs / (1000 * 60 * 60 * 24)).toInt()
+                    val f = overdueDays * r.pricePerDay * 0.1
+                    r.overdueDays = overdueDays
+                    r.fineAmount = f
+                    r.isOverdue = true
+                    overdue++
+                    fine += f
                 }
-                val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                val todayDate = sdf.parse(sdf.format(Date()))
-                var overdue = 0
-                var fine = 0.0
-                val updated = list.map { rental ->
-                    val r = rental.copy()
-                    try {
-                        val endDate = sdf.parse(r.endDate)
-                        if (endDate != null && todayDate != null && endDate.before(todayDate)) {
-                            val diffMs = todayDate.time - endDate.time
-                            val overdueDays = (diffMs / (1000 * 60 * 60 * 24)).toInt()
-                            val f = overdueDays * r.pricePerDay * 0.1
-                            r.overdueDays = overdueDays
-                            r.fineAmount = f
-                            r.isOverdue = true
-                            overdue++
-                            fine += f
-                        }
-                    } catch (_: Exception) { }
-                    r
-                }
-                rentals.clear()
-                rentals.addAll(updated)
-                overdueCount = overdue
-                totalFine = fine
-                isLoading = false
-            }
-            .addOnFailureListener { e ->
-                if (e.message?.contains("FAILED_PRECONDITION") == true || e.message?.contains("index") == true) {
-                    db.collection("rentals")
-                        .whereEqualTo("status", "approved")
-                        .get()
-                        .addOnSuccessListener { documents ->
-                            val list = documents.mapNotNull { doc ->
-                                try {
-                                    doc.toObject(RentalRequest::class.java).copy(id = doc.id)
-                                } catch (_: Exception) { null }
-                            }.sortedByDescending { it.createdAt }
-                            val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                            val todayDate = sdf.parse(sdf.format(Date()))
-                            var overdue = 0
-                            var fine = 0.0
-                            val updated = list.map { rental ->
-                                val r = rental.copy()
-                                try {
-                                    val endDate = sdf.parse(r.endDate)
-                                    if (endDate != null && todayDate != null && endDate.before(todayDate)) {
-                                        val diffMs = todayDate.time - endDate.time
-                                        val overdueDays = (diffMs / (1000 * 60 * 60 * 24)).toInt()
-                                        val f = overdueDays * r.pricePerDay * 0.1
-                                        r.overdueDays = overdueDays
-                                        r.fineAmount = f
-                                        r.isOverdue = true
-                                        overdue++
-                                        fine += f
-                                    }
-                                } catch (_: Exception) { }
-                                r
-                            }
-                            rentals.clear()
-                            rentals.addAll(updated)
-                            overdueCount = overdue
-                            totalFine = fine
-                            isLoading = false
-                        }
-                        .addOnFailureListener {
-                            errorMessage = "Gagal memuat data"
-                            isLoading = false
-                        }
-                } else {
-                    errorMessage = "Gagal memuat data"
-                    isLoading = false
-                }
-            }
+            } catch (_: Exception) { }
+            r
+        }
+        overdueCount = overdue
+        totalFine = fine
+        return processed
     }
 
+    DisposableEffect(Unit) {
+        val listener = db.collection("rentals")
+            .whereEqualTo("status", "approved")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    if (error.message?.contains("FAILED_PRECONDITION") == true || error.message?.contains("index") == true) {
+                        db.collection("rentals")
+                            .whereEqualTo("status", "approved")
+                            .get()
+                            .addOnSuccessListener { documents ->
+                                val raw = documents.mapNotNull { doc ->
+                                    try { doc.toObject(RentalRequest::class.java).copy(id = doc.id) }
+                                    catch (_: Exception) { null }
+                                }.sortedByDescending { it.createdAt }
+                                rentals = processRentals(raw)
+                                isLoading = false
+                                errorMessage = null
+                            }
+                            .addOnFailureListener {
+                                errorMessage = "Gagal memuat data"
+                                isLoading = false
+                            }
+                    } else {
+                        errorMessage = "Gagal memuat data: ${error.localizedMessage}"
+                        isLoading = false
+                    }
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val raw = snapshot.documents.mapNotNull { doc ->
+                        try { doc.toObject(RentalRequest::class.java)?.copy(id = doc.id) }
+                        catch (_: Exception) { null }
+                    }
+                    rentals = processRentals(raw)
+                    isLoading = false
+                    errorMessage = null
+                }
+            }
+        onDispose { listener.remove() }
+    }
 
     fun processReturn() {
         val rental = rentalToReturn ?: return
@@ -186,14 +175,11 @@ fun ManageReturnsScreen(
                 showReturnDialog = false
                 rentalToReturn = null
                 NotificationHelper.showRentalStatusNotification(context, rental.itemName, "returned")
-                loadRentals()
             }
             .addOnFailureListener {
                 isProcessing = false
             }
     }
-
-    LaunchedEffect(Unit) { loadRentals() }
 
     GalaxyBackground(starAlpha = 0.3f) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -228,25 +214,43 @@ fun ManageReturnsScreen(
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     isLoading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Primary)
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = Primary,
+                                strokeWidth = 3.dp
+                            )
+                        }
                     }
                     errorMessage != null -> {
-                        Text(
-                            text = errorMessage!!,
-                            color = ErrorColor,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = errorMessage!!,
+                                color = ErrorColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(24.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                     rentals.isEmpty() -> {
-                        Text(
-                            text = "Belum ada data pengembalian",
-                            color = TextHint,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Belum ada data pengembalian",
+                                color = TextHint,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                     else -> {
                         LazyColumn(
@@ -262,31 +266,80 @@ fun ManageReturnsScreen(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(text = rental.itemName, style = MaterialTheme.typography.titleSmall, color = TextDark)
-                                                Text(text = "Penyewa: ${rental.renterName}", style = MaterialTheme.typography.bodySmall, color = TextLight)
-                                                Text(
-                                                    text = "${rental.startDate} - ${rental.endDate}",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = TextHint
-                                                )
-                                                if (rental.isOverdue) {
-                                                    Text(
-                                                        text = "Terlambat ${rental.overdueDays} hari | Denda: Rp ${String.format("%,.0f", rental.fineAmount)}",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = ErrorColor
-                                                    )
-                                                }
+                                            Text(
+                                                text = rental.itemName,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                color = TextDark,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            if (rental.isOverdue) {
+                                                OverdueBadge(rental.overdueDays)
                                             }
                                         }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.Person,
+                                                contentDescription = null,
+                                                tint = TextHint,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = rental.renterName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TextLight
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.CalendarMonth,
+                                                contentDescription = null,
+                                                tint = TextHint,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "${rental.startDate} - ${rental.endDate}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextHint
+                                            )
+                                        }
+
+                                        if (rental.isOverdue && rental.fineAmount > 0) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    Icons.Default.Warning,
+                                                    contentDescription = null,
+                                                    tint = ErrorColor,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = "Denda: Rp ${String.format("%,.0f", rental.fineAmount)}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = ErrorColor,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
                                         GlowButton(
                                             text = "Tandai Kembali",
                                             onClick = {
                                                 rentalToReturn = rental
                                                 showReturnDialog = true
                                             },
-                                            backgroundColor = SuccessColor,
-                                            modifier = Modifier.padding(top = 8.dp)
+                                            backgroundColor = SuccessColor
                                         )
                                     }
                                 }
@@ -322,5 +375,30 @@ fun ManageReturnsScreen(
             },
             containerColor = TechCardBg
         )
+    }
+}
+
+@Composable
+private fun OverdueBadge(days: Int) {
+    Box(
+        modifier = Modifier
+            .background(ErrorColor.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                tint = ErrorColor,
+                modifier = Modifier.size(12.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "Terlambat $days hari",
+                color = ErrorColor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }

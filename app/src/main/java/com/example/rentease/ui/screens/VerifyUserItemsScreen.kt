@@ -1,5 +1,6 @@
 package com.example.rentease.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,21 +11,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -33,7 +44,6 @@ import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
 import com.example.rentease.ui.components.GlowButton
-import com.example.rentease.ui.components.InfoRow
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.SuccessColor
@@ -41,6 +51,7 @@ import com.example.rentease.ui.theme.TechCardBg
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
+import com.example.rentease.ui.theme.WarningColor
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
@@ -54,7 +65,7 @@ fun VerifyUserItemsScreen(
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
-    var items by remember { mutableStateOf(listOf<Item>()) }
+    var allItems by remember { mutableStateOf(listOf<Item>()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showApproveDialog by remember { mutableStateOf(false) }
@@ -62,43 +73,44 @@ fun VerifyUserItemsScreen(
     var itemToAct by remember { mutableStateOf<Item?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
 
-    fun loadPendingItems() {
-        isLoading = true
-        db.collection("items")
-            .whereEqualTo("approvalStatus", Item.APPROVAL_PENDING)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .get()
-            .addOnSuccessListener { documents ->
-                items = documents.mapNotNull { doc ->
-                    try { doc.toObject(Item::class.java).copy(id = doc.id) }
-                    catch (_: Exception) { null }
-                }
-                isLoading = false
-            }
-            .addOnFailureListener { e ->
-                if (e.message?.contains("FAILED_PRECONDITION") == true || e.message?.contains("index") == true) {
-                    db.collection("items")
-                        .whereEqualTo("approvalStatus", Item.APPROVAL_PENDING)
-                        .get()
-                        .addOnSuccessListener { documents ->
-                            items = documents.mapNotNull { doc ->
-                                try { doc.toObject(Item::class.java).copy(id = doc.id) }
-                                catch (_: Exception) { null }
-                            }.sortedByDescending { it.createdAt }
-                            isLoading = false
-                        }
-                        .addOnFailureListener {
-                            errorMessage = "Gagal memuat data pengajuan"
-                            isLoading = false
-                        }
-                } else {
-                    errorMessage = "Gagal memuat data pengajuan"
-                    isLoading = false
-                }
-            }
-    }
+    val pendingItems = allItems.filter { it.approvalStatus == Item.APPROVAL_PENDING }
 
-    LaunchedEffect(Unit) { loadPendingItems() }
+    DisposableEffect(Unit) {
+        val listener = db.collection("items")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    if (error.message?.contains("index") == true) {
+                        db.collection("items").get()
+                            .addOnSuccessListener { documents ->
+                                allItems = documents.mapNotNull { doc ->
+                                    try { doc.toObject(Item::class.java).copy(id = doc.id) }
+                                    catch (_: Exception) { null }
+                                }.sortedByDescending { it.createdAt }
+                                isLoading = false
+                                errorMessage = null
+                            }
+                            .addOnFailureListener {
+                                errorMessage = "Gagal memuat data pengajuan"
+                                isLoading = false
+                            }
+                    } else {
+                        errorMessage = "Gagal memuat data: ${error.localizedMessage}"
+                        isLoading = false
+                    }
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    allItems = snapshot.documents.mapNotNull { doc ->
+                        try { doc.toObject(Item::class.java)?.copy(id = doc.id) }
+                        catch (_: Exception) { null }
+                    }
+                    isLoading = false
+                    errorMessage = null
+                }
+            }
+        onDispose { listener.remove() }
+    }
 
     fun approveItem() {
         val item = itemToAct ?: return
@@ -109,7 +121,6 @@ fun VerifyUserItemsScreen(
                 isProcessing = false
                 showApproveDialog = false
                 itemToAct = null
-                items = items.filter { it.id != item.id }
             }
             .addOnFailureListener { isProcessing = false }
     }
@@ -123,7 +134,6 @@ fun VerifyUserItemsScreen(
                 isProcessing = false
                 showRejectDialog = false
                 itemToAct = null
-                items = items.filter { it.id != item.id }
             }
             .addOnFailureListener { isProcessing = false }
     }
@@ -135,25 +145,43 @@ fun VerifyUserItemsScreen(
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     isLoading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Primary)
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = Primary,
+                                strokeWidth = 3.dp
+                            )
+                        }
                     }
                     errorMessage != null -> {
-                        Text(
-                            text = errorMessage!!,
-                            color = ErrorColor,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = errorMessage!!,
+                                color = ErrorColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(24.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
-                    items.isEmpty() -> {
-                        Text(
-                            text = "Tidak ada pengajuan barang pending",
-                            color = TextHint,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
+                    pendingItems.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Tidak ada pengajuan barang pending",
+                                color = TextHint,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                     else -> {
                         LazyColumn(
@@ -161,23 +189,106 @@ fun VerifyUserItemsScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            items(items, key = { it.id }) { item ->
+                            items(pendingItems, key = { it.id }) { item ->
                                 GlassCard(modifier = Modifier.fillMaxWidth()) {
                                     Column(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
-                                        Text(text = item.name, style = MaterialTheme.typography.titleSmall, color = TextDark)
-                                        Text(
-                                            text = "Rp ${String.format("%,.0f", item.price)} | Stok: ${item.stock}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = TextLight
-                                        )
-                                        Text(
-                                            text = dateFormat.format(Date(item.createdAt)),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = TextHint
-                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = item.name,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                color = TextDark,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            PendingBadge()
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.Person,
+                                                contentDescription = null,
+                                                tint = TextHint,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = item.ownerId.take(8) + "..." ,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TextLight
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.Category,
+                                                contentDescription = null,
+                                                tint = TextHint,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = item.category,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TextLight
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.CalendarMonth,
+                                                contentDescription = null,
+                                                tint = TextHint,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = dateFormat.format(Date(item.createdAt)),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextHint
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.Sell,
+                                                contentDescription = null,
+                                                tint = SuccessColor,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Rp ${String.format("%,.0f", item.price)} | Stok: ${item.stock}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = SuccessColor
+                                            )
+                                        }
+
+                                        if (item.description.isNotBlank()) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = item.description,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextLight,
+                                                maxLines = 2
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
 
                                         Row(
-                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                            modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             GlowButton(
@@ -254,6 +365,22 @@ fun VerifyUserItemsScreen(
                 }
             },
             containerColor = TechCardBg
+        )
+    }
+}
+
+@Composable
+private fun PendingBadge() {
+    Box(
+        modifier = Modifier
+            .background(WarningColor.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = "Pending",
+            color = WarningColor,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }

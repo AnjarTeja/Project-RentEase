@@ -1,5 +1,6 @@
 package com.example.rentease.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,28 +19,28 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,6 @@ import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.CategoryFilterChips
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
-import com.example.rentease.ui.components.GlowButton
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.SuccessColor
@@ -72,7 +72,7 @@ fun ManageItemsScreen(
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
-    var items by remember { mutableStateOf(listOf<Item>()) }
+    var allItems by remember { mutableStateOf(listOf<Item>()) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -82,70 +82,73 @@ fun ManageItemsScreen(
     var isDeleting by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        isLoading = true
-        errorMessage = null
-        db.collection("items")
+    DisposableEffect(Unit) {
+        val listener = db.collection("items")
             .orderBy("createdAt", Query.Direction.DESCENDING)
-            .get()
-            .addOnSuccessListener { documents ->
-                items = documents.mapNotNull { doc ->
-                    try {
-                        Item(
-                            id = doc.id,
-                            name = doc.getString("name") ?: "",
-                            description = doc.getString("description") ?: "",
-                            price = doc.getDouble("price") ?: 0.0,
-                            ownerId = doc.getString("ownerId") ?: "",
-                            status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
-                            imageUrl = doc.getString("imageUrl") ?: "",
-                            createdAt = doc.getLong("createdAt") ?: 0L,
-                            approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
-                            rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
-                            stock = (doc.getLong("stock") ?: 1L).toInt(),
-                            category = doc.getString("category") ?: Item.CATEGORY_CAMERA
-                        )
-                    } catch (_: Exception) { null }
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    if (error.message?.contains("index") == true) {
+                        db.collection("items").get()
+                            .addOnSuccessListener { documents ->
+                                allItems = documents.mapNotNull { doc ->
+                                    try {
+                                        Item(
+                                            id = doc.id,
+                                            name = doc.getString("name") ?: "",
+                                            description = doc.getString("description") ?: "",
+                                            price = doc.getDouble("price") ?: 0.0,
+                                            ownerId = doc.getString("ownerId") ?: "",
+                                            status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
+                                            imageUrl = doc.getString("imageUrl") ?: "",
+                                            createdAt = doc.getLong("createdAt") ?: 0L,
+                                            approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
+                                            rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
+                                            stock = (doc.getLong("stock") ?: 1L).toInt(),
+                                            category = doc.getString("category") ?: Item.CATEGORY_CAMERA
+                                        )
+                                    } catch (_: Exception) { null }
+                                }.sortedByDescending { it.createdAt }
+                                isLoading = false
+                                errorMessage = null
+                            }
+                            .addOnFailureListener {
+                                errorMessage = "Gagal memuat barang"
+                                isLoading = false
+                            }
+                    } else {
+                        errorMessage = "Gagal memuat barang: ${error.localizedMessage}"
+                        isLoading = false
+                    }
+                    return@addSnapshotListener
                 }
-                isLoading = false
-            }
-            .addOnFailureListener { e ->
-                if (e.message?.contains("index") == true) {
-                    db.collection("items").get()
-                        .addOnSuccessListener { documents ->
-                            items = documents.mapNotNull { doc ->
-                                try {
-                                    Item(
-                                        id = doc.id,
-                                        name = doc.getString("name") ?: "",
-                                        description = doc.getString("description") ?: "",
-                                        price = doc.getDouble("price") ?: 0.0,
-                                        ownerId = doc.getString("ownerId") ?: "",
-                                        status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
-                                        imageUrl = doc.getString("imageUrl") ?: "",
-                                        createdAt = doc.getLong("createdAt") ?: 0L,
-                                        approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
-                                        rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
-                                        stock = (doc.getLong("stock") ?: 1L).toInt(),
-                                        category = doc.getString("category") ?: Item.CATEGORY_CAMERA
-                                    )
-                                } catch (_: Exception) { null }
-                            }.sortedByDescending { it.createdAt }
-                            isLoading = false
-                        }
-                        .addOnFailureListener {
-                            errorMessage = "Gagal memuat barang"
-                            isLoading = false
-                        }
-                } else {
-                    errorMessage = "Gagal memuat barang: ${e.localizedMessage}"
+                if (snapshot != null) {
+                    allItems = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            Item(
+                                id = doc.id,
+                                name = doc.getString("name") ?: "",
+                                description = doc.getString("description") ?: "",
+                                price = doc.getDouble("price") ?: 0.0,
+                                ownerId = doc.getString("ownerId") ?: "",
+                                status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
+                                imageUrl = doc.getString("imageUrl") ?: "",
+                                createdAt = doc.getLong("createdAt") ?: 0L,
+                                approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
+                                rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
+                                stock = (doc.getLong("stock") ?: 1L).toInt(),
+                                category = doc.getString("category") ?: Item.CATEGORY_CAMERA
+                            )
+                        } catch (_: Exception) { null }
+                    }
                     isLoading = false
+                    errorMessage = null
                 }
             }
+        onDispose { listener.remove() }
     }
 
-    val filteredItems = remember(items, searchQuery, selectedCategory) {
-        var result = items
+    val filteredItems = remember(allItems, searchQuery, selectedCategory) {
+        var result = allItems
         if (searchQuery.isNotBlank()) {
             result = result.filter { it.name.contains(searchQuery, ignoreCase = true) }
         }
@@ -201,7 +204,6 @@ fun ManageItemsScreen(
                 isDeleting = false
                 showDeleteDialog = false
                 itemToDelete = null
-                items = items.filter { it.id != item.id }
             }
             .addOnFailureListener {
                 isDeleting = false
@@ -246,7 +248,7 @@ fun ManageItemsScreen(
                     text = deleteError!!,
                     color = ErrorColor,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
                 )
             }
 
@@ -259,28 +261,43 @@ fun ManageItemsScreen(
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     isLoading -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.align(Alignment.Center),
-                            color = Primary
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = Primary,
+                                strokeWidth = 3.dp
+                            )
+                        }
                     }
                     errorMessage != null -> {
-                        Text(
-                            text = errorMessage!!,
-                            color = ErrorColor,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = errorMessage!!,
+                                color = ErrorColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(24.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                     filteredItems.isEmpty() -> {
-                        Text(
-                            text = if (searchQuery.isBlank()) "Belum ada data barang" else "Tidak ditemukan barang \"$searchQuery\"",
-                            color = TextHint,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (searchQuery.isBlank()) "Belum ada data barang" else "Tidak ditemukan barang \"$searchQuery\"",
+                                color = TextHint,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                     else -> {
                         LazyColumn(
@@ -292,36 +309,57 @@ fun ManageItemsScreen(
                         ) {
                             items(filteredItems, key = { it.id }) { item ->
                                 GlassCard(modifier = Modifier.fillMaxWidth()) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
+                                    Column(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
                                             Text(
                                                 text = item.name,
                                                 style = MaterialTheme.typography.titleSmall,
-                                                color = TextDark
+                                                color = TextDark,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.weight(1f)
                                             )
-                                            Text(
-                                                text = "Rp ${String.format("%,.0f", item.price)} | Stok: ${item.stock}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = TextLight
-                                            )
-                                            Text(
-                                                text = dateFormat.format(Date(item.createdAt)),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = TextHint
-                                            )
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                StatusBadge(item.status)
+                                                ApprovalBadge(item.approvalStatus)
+                                            }
                                         }
-                                        IconButton(onClick = {
-                                            navController.navigate(Screen.AddEditItem.createRoute(item.id))
-                                        }) {
-                                            Icon(Icons.Default.Edit, contentDescription = "Edit",
-                                                tint = Primary, modifier = Modifier.size(20.dp))
-                                        }
-                                        IconButton(onClick = { confirmDelete(item) }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Hapus",
-                                                tint = ErrorColor, modifier = Modifier.size(20.dp))
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Text(
+                                            text = "Rp ${String.format("%,.0f", item.price)} | Stok: ${item.stock} | ${item.category}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextLight
+                                        )
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+
+                                        Text(
+                                            text = dateFormat.format(Date(item.createdAt)),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextHint
+                                        )
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            IconButton(onClick = {
+                                                navController.navigate(Screen.AddEditItem.createRoute(item.id))
+                                            }) {
+                                                Icon(Icons.Default.Edit, contentDescription = "Edit",
+                                                    tint = Primary, modifier = Modifier.size(20.dp))
+                                            }
+                                            IconButton(onClick = { confirmDelete(item) }) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Hapus",
+                                                    tint = ErrorColor, modifier = Modifier.size(20.dp))
+                                            }
                                         }
                                     }
                                 }
@@ -357,6 +395,50 @@ fun ManageItemsScreen(
                 }
             },
             containerColor = TechCardBg
+        )
+    }
+}
+
+@Composable
+private fun StatusBadge(status: String) {
+    val (label, bgColor, textColor) = when (status) {
+        Item.STATUS_AVAILABLE -> Triple("Tersedia", SuccessColor.copy(alpha = 0.15f), SuccessColor)
+        Item.STATUS_RENTED -> Triple("Disewa", WarningColor.copy(alpha = 0.15f), WarningColor)
+        Item.STATUS_MAINTENANCE -> Triple("Perbaikan", ErrorColor.copy(alpha = 0.15f), ErrorColor)
+        else -> Triple(status, TechCardBg, TextLight)
+    }
+    Box(
+        modifier = Modifier
+            .background(bgColor, RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = label,
+            color = textColor,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun ApprovalBadge(approvalStatus: String) {
+    if (approvalStatus == Item.APPROVAL_APPROVED) return
+    val (label, bgColor, textColor) = when (approvalStatus) {
+        Item.APPROVAL_PENDING -> Triple("Pending", WarningColor.copy(alpha = 0.15f), WarningColor)
+        Item.APPROVAL_REJECTED -> Triple("Ditolak", ErrorColor.copy(alpha = 0.15f), ErrorColor)
+        else -> return
+    }
+    Box(
+        modifier = Modifier
+            .background(bgColor, RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = label,
+            color = textColor,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }

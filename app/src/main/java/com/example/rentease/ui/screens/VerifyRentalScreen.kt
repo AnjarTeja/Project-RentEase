@@ -1,7 +1,6 @@
 package com.example.rentease.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,24 +11,37 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import android.widget.Toast
 import androidx.compose.ui.unit.dp
@@ -41,7 +53,6 @@ import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
 import com.example.rentease.ui.components.GlowButton
-import com.example.rentease.ui.components.InfoRow
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.SuccessColor
@@ -52,9 +63,7 @@ import com.example.rentease.ui.theme.TextLight
 import com.example.rentease.ui.theme.WarningColor
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+
 
 @Composable
 fun VerifyRentalScreen(
@@ -63,7 +72,7 @@ fun VerifyRentalScreen(
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
     val context = LocalContext.current
-    var rentals by remember { mutableStateOf(listOf<RentalRequest>()) }
+    var allRentals by remember { mutableStateOf(listOf<RentalRequest>()) }
     var currentTab by remember { mutableStateOf(RentalRequest.STATUS_PENDING) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -72,45 +81,46 @@ fun VerifyRentalScreen(
     var rentalToAct by remember { mutableStateOf<RentalRequest?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
 
-    fun loadRentals() {
-        isLoading = true
-        errorMessage = null
-        db.collection("rentals")
-            .whereEqualTo("status", currentTab)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .get()
-            .addOnSuccessListener { documents ->
-                rentals = documents.mapNotNull { doc ->
-                    try { doc.toObject(RentalRequest::class.java).copy(id = doc.id) }
-                    catch (_: Exception) { null }
-                }
-                isLoading = false
-            }
-            .addOnFailureListener { e ->
-                if (e.message?.contains("index") == true) {
-                    db.collection("rentals").get()
-                        .addOnSuccessListener { documents ->
-                            rentals = documents
-                                .filter { it.getString("status") == currentTab }
-                                .sortedByDescending { it.getLong("createdAt") ?: 0L }
-                                .mapNotNull { doc ->
-                                    try { doc.toObject(RentalRequest::class.java).copy(id = doc.id) }
-                                    catch (_: Exception) { null }
-                                }
-                            isLoading = false
-                        }
-                        .addOnFailureListener {
-                            errorMessage = "Gagal memuat data"
-                            isLoading = false
-                        }
-                } else {
-                    errorMessage = "Gagal memuat data: ${e.localizedMessage}"
-                    isLoading = false
-                }
-            }
+    val rentals by remember(allRentals, currentTab) {
+        derivedStateOf { allRentals.filter { it.status == currentTab } }
     }
 
-    LaunchedEffect(currentTab) { loadRentals() }
+    DisposableEffect(Unit) {
+        val listener = db.collection("rentals")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    if (error.message?.contains("index") == true) {
+                        db.collection("rentals").get()
+                            .addOnSuccessListener { docs ->
+                                allRentals = docs.mapNotNull { doc ->
+                                    try { doc.toObject(RentalRequest::class.java)?.copy(id = doc.id) }
+                                    catch (_: Exception) { null }
+                                }
+                                isLoading = false
+                                errorMessage = null
+                            }
+                            .addOnFailureListener {
+                                errorMessage = "Gagal memuat data"
+                                isLoading = false
+                            }
+                    } else {
+                        errorMessage = "Gagal memuat data: ${error.localizedMessage}"
+                        isLoading = false
+                    }
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    allRentals = snapshot.documents.mapNotNull { doc ->
+                        try { doc.toObject(RentalRequest::class.java)?.copy(id = doc.id) }
+                        catch (_: Exception) { null }
+                    }
+                    isLoading = false
+                    errorMessage = null
+                }
+            }
+        onDispose { listener.remove() }
+    }
 
     fun showConfirm(rental: RentalRequest, newStatus: String) {
         rentalToAct = rental
@@ -123,10 +133,24 @@ fun VerifyRentalScreen(
         val newStatus = confirmAction
         isProcessing = true
 
-        if (newStatus == RentalRequest.STATUS_APPROVED && rental.itemId.isNotEmpty()) {
+        if (newStatus == RentalRequest.STATUS_APPROVED) {
+            if (rental.itemId.isEmpty()) {
+                isProcessing = false
+                showConfirmDialog = false
+                rentalToAct = null
+                Toast.makeText(context, "ID barang tidak valid", Toast.LENGTH_SHORT).show()
+                return
+            }
             db.collection("items").document(rental.itemId).get()
                 .addOnSuccessListener { doc ->
-                    val currentStock = doc.getLong("stock")?.toInt() ?: 1
+                    if (!doc.exists()) {
+                        isProcessing = false
+                        showConfirmDialog = false
+                        rentalToAct = null
+                        Toast.makeText(context, "Barang tidak ditemukan", Toast.LENGTH_SHORT).show()
+                        return@addOnSuccessListener
+                    }
+                    val currentStock = doc.getLong("stock")?.toInt() ?: 0
                     if (currentStock <= 0) {
                         isProcessing = false
                         showConfirmDialog = false
@@ -151,11 +175,18 @@ fun VerifyRentalScreen(
                             showConfirmDialog = false
                             rentalToAct = null
                             NotificationHelper.showRentalStatusNotification(context, rental.itemName, newStatus)
-                            loadRentals()
                         }
-                        .addOnFailureListener { isProcessing = false; showConfirmDialog = false }
+                        .addOnFailureListener {
+                            isProcessing = false
+                            showConfirmDialog = false
+                            Toast.makeText(context, "Gagal memperbarui status", Toast.LENGTH_SHORT).show()
+                        }
                 }
-                .addOnFailureListener { isProcessing = false; showConfirmDialog = false }
+                .addOnFailureListener {
+                    isProcessing = false
+                    showConfirmDialog = false
+                    Toast.makeText(context, "Gagal memeriksa stok barang", Toast.LENGTH_SHORT).show()
+                }
         } else {
             val batch = db.batch()
             val rentalRef = db.collection("rentals").document(rental.id)
@@ -167,9 +198,12 @@ fun VerifyRentalScreen(
                     showConfirmDialog = false
                     rentalToAct = null
                     NotificationHelper.showRentalStatusNotification(context, rental.itemName, newStatus)
-                    loadRentals()
                 }
-                .addOnFailureListener { isProcessing = false; showConfirmDialog = false }
+                .addOnFailureListener {
+                    isProcessing = false
+                    showConfirmDialog = false
+                    Toast.makeText(context, "Gagal memperbarui status", Toast.LENGTH_SHORT).show()
+                }
         }
     }
 
@@ -178,42 +212,71 @@ fun VerifyRentalScreen(
 
     GalaxyBackground(starAlpha = 0.3f) {
         Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(title = "Verifikasi Rental", onBackClick = onBack)
+            AppToolbar(
+                title = "Verifikasi Rental",
+                onBackClick = onBack
+            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            TabRow(
+                selectedTabIndex = tabValues.indexOf(currentTab).coerceAtLeast(0),
+                containerColor = TechCardBg,
+                contentColor = Primary,
+                indicator = { tabPositions ->
+                    SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[tabValues.indexOf(currentTab).coerceAtLeast(0)]),
+                        height = 3.dp,
+                        color = Primary
+                    )
+                },
+                divider = { Spacer(modifier = Modifier.height(0.dp)) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
             ) {
                 tabs.forEachIndexed { index, label ->
-                    val selected = currentTab == tabValues[index]
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (selected) TechCardBg else TextLight,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (selected) Primary else TechCardBg)
-                            .clickable { currentTab = tabValues[index] }
-                            .padding(vertical = 10.dp),
-                        textAlign = TextAlign.Center
+                    Tab(
+                        selected = currentTab == tabValues[index],
+                        onClick = { currentTab = tabValues[index] },
+                        text = {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (currentTab == tabValues[index]) FontWeight.Bold else FontWeight.Normal,
+                                color = if (currentTab == tabValues[index]) Primary else TextLight
+                            )
+                        },
+                        selectedContentColor = Primary,
+                        unselectedContentColor = TextLight
                     )
                 }
             }
 
+            Spacer(modifier = Modifier.height(4.dp))
+
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     isLoading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Primary)
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = Primary,
+                                strokeWidth = 3.dp
+                            )
+                        }
                     }
                     errorMessage != null -> {
-                        Text(
-                            text = errorMessage!!,
-                            color = ErrorColor,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = errorMessage!!,
+                                color = ErrorColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(24.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                     rentals.isEmpty() -> {
                         val emptyMsg = when (currentTab) {
@@ -222,33 +285,127 @@ fun VerifyRentalScreen(
                             RentalRequest.STATUS_REJECTED -> "Belum ada pengajuan yang ditolak"
                             else -> "Data kosong"
                         }
-                        Text(
-                            text = emptyMsg,
-                            color = TextHint,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = emptyMsg,
+                                color = TextHint,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                         ) {
                             items(rentals, key = { it.id }) { rental ->
                                 GlassCard(modifier = Modifier.fillMaxWidth()) {
                                     Column(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
-                                        Text(text = rental.itemName, style = MaterialTheme.typography.titleSmall, color = TextDark)
-                                        Text(text = "Penyewa: ${rental.renterName}", style = MaterialTheme.typography.bodySmall, color = TextLight)
-                                        Text(text = "${rental.startDate} - ${rental.endDate}", style = MaterialTheme.typography.labelSmall, color = TextHint)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = rental.itemName,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                color = TextDark,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            StatusBadge(rental.status)
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.Person,
+                                                contentDescription = null,
+                                                tint = TextHint,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = rental.renterName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TextLight
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.CalendarMonth,
+                                                contentDescription = null,
+                                                tint = TextHint,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "${rental.startDate} - ${rental.endDate}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextHint
+                                            )
+                                        }
+
+                                        if (rental.duration > 0) {
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    Icons.Default.AccessTime,
+                                                    contentDescription = null,
+                                                    tint = TextHint,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = "${rental.duration} hari",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = TextHint
+                                                )
+                                            }
+                                        }
+
+                                        if (rental.pricePerDay > 0) {
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    Icons.Default.AttachMoney,
+                                                    contentDescription = null,
+                                                    tint = SuccessColor,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = "Rp ${String.format("%,.0f", rental.pricePerDay)}/hari",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = SuccessColor
+                                                )
+                                            }
+                                        }
+
                                         if (rental.note.isNotBlank()) {
-                                            Text(text = "Catatan: ${rental.note}", style = MaterialTheme.typography.labelSmall, color = TextLight)
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Text(
+                                                text = "Catatan: ${rental.note}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextLight,
+                                                maxLines = 2
+                                            )
                                         }
 
                                         if (currentTab == RentalRequest.STATUS_PENDING) {
+                                            Spacer(modifier = Modifier.height(10.dp))
                                             Row(
-                                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                                modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
                                                 GlowButton(
@@ -301,6 +458,28 @@ fun VerifyRentalScreen(
                 }
             },
             containerColor = TechCardBg
+        )
+    }
+}
+
+@Composable
+private fun StatusBadge(status: String) {
+    val (label, bgColor, textColor) = when (status) {
+        RentalRequest.STATUS_PENDING -> Triple("Pending", WarningColor.copy(alpha = 0.15f), WarningColor)
+        RentalRequest.STATUS_APPROVED -> Triple("Disetujui", SuccessColor.copy(alpha = 0.15f), SuccessColor)
+        RentalRequest.STATUS_REJECTED -> Triple("Ditolak", ErrorColor.copy(alpha = 0.15f), ErrorColor)
+        else -> Triple(status, TechCardBg, TextLight)
+    }
+    Box(
+        modifier = Modifier
+            .background(bgColor, RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = label,
+            color = textColor,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }

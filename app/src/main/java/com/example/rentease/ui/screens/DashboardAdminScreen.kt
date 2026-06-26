@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,25 +14,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -47,24 +44,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.example.rentease.FirebaseAuthManager
-import com.example.rentease.ui.components.MenuGridItem
-import com.example.rentease.ui.components.StatItem
-import com.example.rentease.R
 import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
+import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ui.components.ExitConfirmDialog
 import com.example.rentease.ui.components.GalaxyBackground
-import com.example.rentease.ui.theme.TechDarkBg
+import com.example.rentease.ui.components.MenuGridItem
 import com.example.rentease.ui.components.NebulaHeader
 import com.example.rentease.ui.components.RoleBadge
+import com.example.rentease.ui.components.StatCard
 import com.example.rentease.ui.navigation.Screen
 import com.example.rentease.ui.theme.Primary
+import com.example.rentease.ui.theme.PrimaryLight
 import com.example.rentease.ui.theme.PurpleAccent
 import com.example.rentease.ui.theme.SuccessColor
 import com.example.rentease.ui.theme.TechCardBg
@@ -108,11 +104,12 @@ fun DashboardAdminScreen(
             AdminMenuItem("Tambah Barang", Icons.Default.Add, Screen.AddEditItem.createRoute(fromUser = false), Primary),
             AdminMenuItem("Kelola User", Icons.Default.Group, Screen.ManageUsers.route, Primary),
             AdminMenuItem("Kelola Barang", Icons.Default.Inventory, Screen.ManageItems.route, WarningColor),
-            AdminMenuItem("Verif. Rental", Icons.Default.Restore, Screen.VerifyRental.route, Primary),
+            AdminMenuItem("Verif. Rental", Icons.Default.CheckCircle, Screen.VerifyRental.route, Primary),
             AdminMenuItem("Verif. Barang", Icons.Default.Verified, Screen.VerifyUserItems.route, SuccessColor),
             AdminMenuItem("Pengembalian", Icons.Default.Restore, Screen.ManageReturns.route, Primary),
             AdminMenuItem("Laporan", Icons.Default.Report, Screen.ViewReports.route, PurpleAccent),
-            AdminMenuItem("Komplain", Icons.Default.SupportAgent, Screen.UserComplaints.route, SuccessColor)
+            AdminMenuItem("Komplain", Icons.Default.SupportAgent, Screen.UserComplaints.route, WarningColor),
+            AdminMenuItem("Layanan", Icons.AutoMirrored.Filled.Help, Screen.CustomerService.route, Primary)
         )
     }
 
@@ -144,9 +141,10 @@ fun DashboardAdminScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(54.dp)
                             .clip(CircleShape)
-                            .background(TechCardBg),
+                            .background(TechCardBg)
+                            .clickable { navController.navigate(Screen.ProfileAdmin.route) },
                         contentAlignment = Alignment.Center
                     ) {
                         if (!profileImageUrl.isNullOrBlank()) {
@@ -169,66 +167,95 @@ fun DashboardAdminScreen(
                                 error = androidx.compose.ui.res.painterResource(com.example.rentease.R.drawable.ic_launcher_foreground)
                             )
                         } else {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = PurpleAccent, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(28.dp))
                         }
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = userName, style = MaterialTheme.typography.titleLarge, color = TextDark)
-                        RoleBadge(role = "Admin", textColor = PurpleAccent)
-                    }
-                    Button(
-                        onClick = { navController.navigate(Screen.ProfileAdmin.route) },
-                        colors = ButtonDefaults.buttonColors(containerColor = PurpleAccent),
-                        shape = RoundedCornerShape(12.dp)
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(
+                        modifier = Modifier.weight(1f).clickable { navController.navigate(Screen.ProfileAdmin.route) }
                     ) {
-                        Text("Profil", color = TechDarkBg)
+                        Text(
+                            text = userName,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextDark,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        RoleBadge(role = "Admin", textColor = PurpleAccent)
                     }
                 }
             }
 
+            Spacer(modifier = Modifier.height(4.dp))
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatItem(value = statUsers, label = "Total User", color = Primary, modifier = Modifier.weight(1f))
-                StatItem(value = statTransactions, label = "Transaksi", color = SuccessColor, modifier = Modifier.weight(1f))
-                StatItem(value = statItems, label = "Barang", color = WarningColor, modifier = Modifier.weight(1f))
+                StatCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Default.Person,
+                    value = statUsers,
+                    label = "Pengguna",
+                    iconTint = Primary,
+                    valueColor = Primary
+                )
+                StatCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Default.ShoppingCart,
+                    value = statTransactions,
+                    label = "Transaksi",
+                    iconTint = SuccessColor,
+                    valueColor = SuccessColor
+                )
+                StatCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Default.Inventory,
+                    value = statItems,
+                    label = "Barang",
+                    iconTint = WarningColor,
+                    valueColor = WarningColor
+                )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Text(
                 text = "Menu Admin",
                 style = MaterialTheme.typography.titleMedium,
                 color = TextLight,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(440.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                userScrollEnabled = false
-            ) {
-                items(menus) { menu ->
-                    MenuGridItem(
-                        icon = menu.icon,
-                        label = menu.label,
-                        tint = menu.tint,
-                        onClick = { navController.navigate(menu.route) }
-                    )
+            menus.chunked(3).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    row.forEach { menu ->
+                        MenuGridItem(
+                            icon = menu.icon,
+                            label = menu.label,
+                            tint = menu.tint,
+                            onClick = { navController.navigate(menu.route) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.height(10.dp))
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(
+                color = Primary.copy(alpha = 0.15f),
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
