@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +48,7 @@ import com.example.rentease.ui.components.InfoRow
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.SuccessColor
+import com.example.rentease.ui.theme.TechCardBg
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
@@ -73,6 +75,8 @@ fun TicketDetailScreen(
     var petugasName by remember { mutableStateOf("Petugas") }
     var isStaff by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showResolveDialog by remember { mutableStateOf(false) }
+    var isResolving by remember { mutableStateOf(false) }
 
     val sdf = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID")) }
 
@@ -99,17 +103,23 @@ fun TicketDetailScreen(
                 if (snapshot != null && snapshot.exists()) {
                     ticket = snapshot.toObject(SupportTicket::class.java)?.copy(id = snapshot.id)
                     loading = false
-                    ticket?.let {
-                        if (it.status == SupportTicket.STATUS_RESOLVED) {
-                            replyText = it.replyMessage
-                        }
-                    }
                 } else if (snapshot != null && !snapshot.exists()) {
                     errorMessage = "Tiket tidak ditemukan"
                     loading = false
                 }
             }
         onDispose { listener.remove() }
+    }
+
+    fun resolveTicket() {
+        isResolving = true
+        db.collection("support_tickets").document(ticketId)
+            .update("status", SupportTicket.STATUS_RESOLVED)
+            .addOnSuccessListener {
+                isResolving = false
+                showResolveDialog = false
+            }
+            .addOnFailureListener { isResolving = false }
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
@@ -249,25 +259,34 @@ fun TicketDetailScreen(
                         GlowButton(
                             text = if (submitting) "Mengirim..." else "Kirim Tanggapan",
                             onClick = {
-                                if (replyText.isEmpty()) return@GlowButton
+                                if (replyText.isBlank()) return@GlowButton
                                 val petugasId = auth.currentUser?.uid ?: return@GlowButton
                                 submitting = true
                                 val updates = mapOf(
-                                    "replyMessage" to replyText,
+                                    "replyMessage" to replyText.trim(),
                                     "repliedAt" to System.currentTimeMillis(),
                                     "repliedBy" to petugasId,
                                     "repliedByName" to petugasName,
-                                    "status" to SupportTicket.STATUS_RESOLVED
+                                    "status" to SupportTicket.STATUS_IN_PROGRESS
                                 )
                                 db.collection("support_tickets").document(ticketId)
                                     .update(updates)
                                     .addOnSuccessListener {
                                         submitting = false
-                                        onBack()
+                                        replyText = ""
                                     }
                                     .addOnFailureListener { submitting = false }
                             },
                             enabled = !submitting
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        GlowButton(
+                            text = if (isResolving) "Memproses..." else "Selesaikan",
+                            onClick = { showResolveDialog = true },
+                            backgroundColor = SuccessColor,
+                            enabled = !submitting && !isResolving
                         )
                     }
 
@@ -284,5 +303,37 @@ fun TicketDetailScreen(
                 }
             }
         }
+    }
+
+    if (showResolveDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isResolving) showResolveDialog = false },
+            title = { Text("Selesaikan Tiket", color = TextDark) },
+            text = {
+                Text(
+                    "Tandai tiket \"${ticket?.subject ?: ""}\" sebagai selesai?",
+                    color = TextLight
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { resolveTicket() },
+                    enabled = !isResolving
+                ) {
+                    Text(
+                        if (isResolving) "Memproses..." else "Ya, Selesai",
+                        color = SuccessColor
+                    )
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { showResolveDialog = false }
+                ) {
+                    Text("Batal", color = TextHint)
+                }
+            },
+            containerColor = TechCardBg
+        )
     }
 }

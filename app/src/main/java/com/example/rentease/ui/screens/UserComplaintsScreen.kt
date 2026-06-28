@@ -22,6 +22,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,17 +36,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.rentease.Complaint
+import com.example.rentease.FirebaseAuthManager
 import com.google.firebase.auth.FirebaseAuth
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
 import com.example.rentease.ui.components.GlowButton
-import com.example.rentease.ui.components.StatItem
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.SuccessColor
@@ -77,14 +79,30 @@ fun UserComplaintsScreen(
     var showResolveDialog by remember { mutableStateOf(false) }
     var replyText by remember { mutableStateOf("") }
     var isProcessing by remember { mutableStateOf(false) }
+    var statusFilter by remember { mutableStateOf<String?>(null) }
+    var accessError by remember { mutableStateOf<String?>(null) }
 
-    val filteredComplaints = remember(allComplaints, searchQuery) {
-        if (searchQuery.isBlank()) allComplaints
+    LaunchedEffect(Unit) {
+        val authManager = FirebaseAuthManager()
+        authManager.getUserRole(
+            onSuccess = { role ->
+                if (role != "admin") {
+                    accessError = "Anda tidak memiliki akses ke halaman ini"
+                }
+            },
+            onFailure = { accessError = "Gagal memverifikasi akses" }
+        )
+    }
+
+    val filteredComplaints = remember(allComplaints, searchQuery, statusFilter) {
+        val bySearch = if (searchQuery.isBlank()) allComplaints
         else allComplaints.filter {
             it.subject.contains(searchQuery, ignoreCase = true) ||
             it.message.contains(searchQuery, ignoreCase = true) ||
             it.userName.contains(searchQuery, ignoreCase = true)
         }
+        if (statusFilter == null) bySearch
+        else bySearch.filter { it.status == statusFilter }
     }
 
     val openCount = remember(allComplaints) { allComplaints.count { it.status == Complaint.STATUS_OPEN } }
@@ -159,17 +177,63 @@ fun UserComplaintsScreen(
             .addOnFailureListener { isProcessing = false }
     }
 
-    GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(title = "Keluhan Pengguna", onBackClick = onBack)
+    if (accessError != null) {
+        GalaxyBackground(starAlpha = 0.3f) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Akses Ditolak", onBackClick = onBack)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = accessError!!,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(24.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    } else {
+        GalaxyBackground(starAlpha = 0.3f) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Keluhan Pengguna", onBackClick = onBack)
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatItem(value = openCount.toString(), label = "Terbuka", color = ErrorColor, modifier = Modifier.weight(1f))
-                StatItem(value = progressCount.toString(), label = "Diproses", color = WarningColor, modifier = Modifier.weight(1f))
-                StatItem(value = resolvedCount.toString(), label = "Selesai", color = SuccessColor, modifier = Modifier.weight(1f))
+                FilterStatItem(
+                    value = openCount.toString(),
+                    label = "Terbuka",
+                    color = ErrorColor,
+                    isActive = statusFilter == Complaint.STATUS_OPEN,
+                    onClick = {
+                        statusFilter = if (statusFilter == Complaint.STATUS_OPEN) null else Complaint.STATUS_OPEN
+                        selectedComplaint = null
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                FilterStatItem(
+                    value = progressCount.toString(),
+                    label = "Diproses",
+                    color = WarningColor,
+                    isActive = statusFilter == Complaint.STATUS_IN_PROGRESS,
+                    onClick = {
+                        statusFilter = if (statusFilter == Complaint.STATUS_IN_PROGRESS) null else Complaint.STATUS_IN_PROGRESS
+                        selectedComplaint = null
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                FilterStatItem(
+                    value = resolvedCount.toString(),
+                    label = "Selesai",
+                    color = SuccessColor,
+                    isActive = statusFilter == Complaint.STATUS_RESOLVED,
+                    onClick = {
+                        statusFilter = if (statusFilter == Complaint.STATUS_RESOLVED) null else Complaint.STATUS_RESOLVED
+                        selectedComplaint = null
+                    },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             OutlinedTextField(
@@ -189,7 +253,7 @@ fun UserComplaintsScreen(
                 )
             )
 
-            Box(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 when {
                     isLoading -> {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Primary)
@@ -204,8 +268,13 @@ fun UserComplaintsScreen(
                         )
                     }
                     filteredComplaints.isEmpty() -> {
+                        val emptyMsg = when {
+                            searchQuery.isNotBlank() -> "Tidak ditemukan keluhan"
+                            statusFilter != null -> "Tidak ada keluhan dengan status ini"
+                            else -> "Belum ada keluhan"
+                        }
                         Text(
-                            text = if (searchQuery.isBlank()) "Belum ada keluhan" else "Tidak ditemukan keluhan",
+                            text = emptyMsg,
                             color = TextHint,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.align(Alignment.Center).padding(16.dp),
@@ -220,7 +289,7 @@ fun UserComplaintsScreen(
                         ) {
                             items(filteredComplaints, key = { it.id }) { complaint ->
                                 GlassCard(modifier = Modifier.fillMaxWidth().clickable {
-                                    selectedComplaint = complaint
+                                    selectedComplaint = if (selectedComplaint?.id == complaint.id) null else complaint
                                 }) {
                                     Column(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
                                         Row(
@@ -262,12 +331,45 @@ fun UserComplaintsScreen(
 
                                         if (selectedComplaint?.id == complaint.id) {
                                             Spacer(modifier = Modifier.height(8.dp))
+                                            HorizontalDivider(color = Primary.copy(alpha = 0.1f))
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            Text(text = "Email: ${complaint.userEmail}", style = MaterialTheme.typography.labelSmall, color = TextHint)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = complaint.message,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TextLight
+                                            )
+
+                                            if (complaint.replyMessage.isNotBlank()) {
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                HorizontalDivider(color = Primary.copy(alpha = 0.1f))
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(text = "Balasan Admin:", style = MaterialTheme.typography.labelSmall, color = Primary)
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = complaint.replyMessage,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = TextLight
+                                                )
+                                                if (complaint.repliedByName.isNotBlank()) {
+                                                    Spacer(modifier = Modifier.height(2.dp))
+                                                    Text(
+                                                        text = "— ${complaint.repliedByName}, ${dateFormat.format(Date(complaint.repliedAt))}",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = TextHint
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.height(8.dp))
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
                                                 GlowButton(
-                                                    text = "Balas",
+                                                    text = if (complaint.replyMessage.isBlank()) "Balas" else "Edit Balasan",
                                                     onClick = {
                                                         selectedComplaint = complaint
                                                         replyText = complaint.replyMessage
@@ -298,13 +400,42 @@ fun UserComplaintsScreen(
             }
         }
     }
+    }
 
     if (showRespondDialog && selectedComplaint != null) {
+        val c = selectedComplaint!!
+        val isEdit = c.replyMessage.isNotBlank()
         AlertDialog(
             onDismissRequest = { if (!isProcessing) { showRespondDialog = false; replyText = "" } },
-            title = { Text("Balas Keluhan: ${selectedComplaint!!.subject}", color = TextDark) },
+            title = { Text("${if (isEdit) "Edit" else "Balas"} Keluhan", color = TextDark) },
             text = {
                 Column {
+                    Text(
+                        text = c.subject,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Dari: ${c.userName}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextHint
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = c.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextLight
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = Primary.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isEdit) "Edit balasan Anda:" else "Tulis balasan Anda:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextHint
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
                         value = replyText,
                         onValueChange = { replyText = it },
@@ -355,6 +486,48 @@ fun UserComplaintsScreen(
             },
             containerColor = TechCardBg
         )
+    }
+}
+
+@Composable
+private fun FilterStatItem(
+    value: String,
+    label: String,
+    color: androidx.compose.ui.graphics.Color,
+    isActive: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val borderColor = if (isActive) color else color.copy(alpha = 0f)
+    GlassCard(
+        modifier = modifier.clickable { onClick() },
+        radius = 12.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (isActive) Modifier.background(color.copy(alpha = 0.08f))
+                    else Modifier
+                )
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (isActive) color else color.copy(alpha = 0.6f),
+                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isActive) TextLight else TextHint
+                )
+            }
+        }
     }
 }
 

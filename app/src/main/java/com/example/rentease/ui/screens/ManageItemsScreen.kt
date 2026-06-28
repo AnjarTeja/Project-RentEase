@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +60,7 @@ import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
 import com.example.rentease.ui.theme.WarningColor
 import com.example.rentease.ui.navigation.Screen
+import com.example.rentease.FirebaseAuthManager
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
@@ -81,6 +83,19 @@ fun ManageItemsScreen(
     var itemToDelete by remember { mutableStateOf<Item?>(null) }
     var isDeleting by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
+    var accessError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val authManager = FirebaseAuthManager()
+        authManager.getUserRole(
+            onSuccess = { role ->
+                if (role != "admin" && role != "petugas") {
+                    accessError = "Anda tidak memiliki akses ke halaman ini"
+                }
+            },
+            onFailure = { accessError = "Gagal memverifikasi akses" }
+        )
+    }
 
     DisposableEffect(Unit) {
         val listener = db.collection("items")
@@ -212,9 +227,23 @@ fun ManageItemsScreen(
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(
-                title = "Kelola Barang",
+        if (accessError != null) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Akses Ditolak", onBackClick = onBack)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = accessError!!,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(24.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(
+                    title = "Kelola Barang",
                 onBackClick = onBack,
                 trailingIcon = {
                     ExtendedFloatingActionButton(
@@ -368,6 +397,7 @@ fun ManageItemsScreen(
                     }
                 }
             }
+        }
         }
     }
 

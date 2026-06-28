@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
@@ -65,6 +66,19 @@ fun ManageUsersScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var userToDelete by remember { mutableStateOf<Map<String, Any>?>(null) }
     var isDeleting by remember { mutableStateOf(false) }
+    var accessError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val authManager = FirebaseAuthManager()
+        authManager.getUserRole(
+            onSuccess = { role ->
+                if (role != "admin") {
+                    accessError = "Anda tidak memiliki akses ke halaman ini"
+                }
+            },
+            onFailure = { accessError = "Gagal memverifikasi akses" }
+        )
+    }
 
     LaunchedEffect(Unit) {
         isLoading = true
@@ -107,11 +121,25 @@ fun ManageUsersScreen(
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(
-                title = if (filterStaffOnly) "Kelola Staff" else "Kelola Pengguna",
-                onBackClick = onBack
-            )
+        if (accessError != null) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Akses Ditolak", onBackClick = onBack)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = accessError!!,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(24.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(
+                    title = if (filterStaffOnly) "Kelola Staff" else "Kelola Pengguna",
+                    onBackClick = onBack
+                )
 
             Text(
                 text = "${users.size} pengguna",
@@ -194,6 +222,7 @@ fun ManageUsersScreen(
                 }
             }
         }
+    }
     }
 
     if (showDeleteDialog && userToDelete != null) {

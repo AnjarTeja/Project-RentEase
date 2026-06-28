@@ -35,6 +35,7 @@ sealed class Screen(val route: String) {
     object VerifyUserItems : Screen("verify_user_items")
     object ViewReports : Screen("view_reports")
     object UserComplaints : Screen("user_complaints")
+    object UserChat : Screen("user_chat")
     object ChatList : Screen("chat_list")
     object Chat : Screen("chat/{chatId}") {
         fun createRoute(chatId: String) = "chat/$chatId"

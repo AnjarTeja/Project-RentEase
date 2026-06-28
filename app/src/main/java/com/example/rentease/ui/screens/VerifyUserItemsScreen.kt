@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.Item
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
@@ -72,6 +74,19 @@ fun VerifyUserItemsScreen(
     var showRejectDialog by remember { mutableStateOf(false) }
     var itemToAct by remember { mutableStateOf<Item?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
+    var accessError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val authManager = FirebaseAuthManager()
+        authManager.getUserRole(
+            onSuccess = { role ->
+                if (role != "admin" && role != "petugas") {
+                    accessError = "Anda tidak memiliki akses ke halaman ini"
+                }
+            },
+            onFailure = { accessError = "Gagal memverifikasi akses" }
+        )
+    }
 
     val pendingItems = allItems.filter { it.approvalStatus == Item.APPROVAL_PENDING }
 
@@ -139,8 +154,22 @@ fun VerifyUserItemsScreen(
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(title = "Verifikasi Barang User", onBackClick = onBack)
+        if (accessError != null) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Akses Ditolak", onBackClick = onBack)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = accessError!!,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(24.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Verifikasi Barang User", onBackClick = onBack)
 
             Box(modifier = Modifier.weight(1f)) {
                 when {
@@ -317,6 +346,7 @@ fun VerifyUserItemsScreen(
                     }
                 }
             }
+        }
         }
     }
 

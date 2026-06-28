@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +48,7 @@ import android.widget.Toast
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.rentease.Item
+import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.NotificationHelper
 import com.example.rentease.RentalRequest
 import com.example.rentease.ui.components.AppToolbar
@@ -80,6 +82,19 @@ fun VerifyRentalScreen(
     var confirmAction by remember { mutableStateOf("") }
     var rentalToAct by remember { mutableStateOf<RentalRequest?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
+    var accessError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val authManager = FirebaseAuthManager()
+        authManager.getUserRole(
+            onSuccess = { role ->
+                if (role != "admin" && role != "petugas") {
+                    accessError = "Anda tidak memiliki akses ke halaman ini"
+                }
+            },
+            onFailure = { accessError = "Gagal memverifikasi akses" }
+        )
+    }
 
     val rentals by remember(allRentals, currentTab) {
         derivedStateOf { allRentals.filter { it.status == currentTab } }
@@ -211,11 +226,25 @@ fun VerifyRentalScreen(
     val tabValues = listOf(RentalRequest.STATUS_PENDING, RentalRequest.STATUS_APPROVED, RentalRequest.STATUS_REJECTED)
 
     GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(
-                title = "Verifikasi Rental",
-                onBackClick = onBack
-            )
+        if (accessError != null) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Akses Ditolak", onBackClick = onBack)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = accessError!!,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(24.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(
+                    title = "Verifikasi Rental",
+                    onBackClick = onBack
+                )
 
             TabRow(
                 selectedTabIndex = tabValues.indexOf(currentTab).coerceAtLeast(0),
@@ -429,6 +458,7 @@ fun VerifyRentalScreen(
                     }
                 }
             }
+        }
         }
     }
 

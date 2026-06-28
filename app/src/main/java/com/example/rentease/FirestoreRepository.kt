@@ -172,6 +172,65 @@ object FirestoreRepository {
             .addOnFailureListener { onSuccess(0) }
     }
 
+    // ============ COMPLAINTS ============
+
+    fun getComplaints(onSuccess: (List<Complaint>) -> Unit, onFailure: (Exception) -> Unit) {
+        firestore.collection("complaints")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { documents ->
+                val complaints = documents.mapNotNull { doc ->
+                    try {
+                        Complaint(
+                            id = doc.id,
+                            userId = doc.getString("userId") ?: "",
+                            userName = doc.getString("userName") ?: "",
+                            userEmail = doc.getString("userEmail") ?: "",
+                            subject = doc.getString("subject") ?: "",
+                            message = doc.getString("message") ?: "",
+                            status = doc.getString("status") ?: Complaint.STATUS_OPEN,
+                            createdAt = doc.getLong("createdAt") ?: 0L,
+                            replyMessage = doc.getString("replyMessage") ?: "",
+                            repliedAt = doc.getLong("repliedAt") ?: 0L,
+                            repliedBy = doc.getString("repliedBy") ?: "",
+                            repliedByName = doc.getString("repliedByName") ?: ""
+                        )
+                    } catch (_: Exception) { null }
+                }
+                onSuccess(complaints)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    fun replyToComplaint(
+        complaintId: String,
+        replyMessage: String,
+        adminUid: String,
+        adminName: String,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        firestore.collection("complaints").document(complaintId)
+            .update(
+                mapOf(
+                    "replyMessage" to replyMessage,
+                    "repliedAt" to System.currentTimeMillis(),
+                    "repliedBy" to adminUid,
+                    "repliedByName" to adminName,
+                    "status" to Complaint.STATUS_IN_PROGRESS
+                )
+            )
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    fun resolveComplaint(complaintId: String, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
+        firestore.collection("complaints").document(complaintId)
+            .update("status", Complaint.STATUS_RESOLVED)
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
     // ============ HELPERS ============
 
     private fun parseItem(doc: com.google.firebase.firestore.DocumentSnapshot): Item {

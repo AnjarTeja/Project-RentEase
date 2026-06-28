@@ -38,10 +38,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.example.rentease.FirebaseAuthManager
+import com.example.rentease.ImageUploadHelper
 import com.example.rentease.Item
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.CategoryFilterChips
@@ -72,6 +75,19 @@ fun AllItemsScreen(
     var errorMessage by remember { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var accessError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val authManager = FirebaseAuthManager()
+        authManager.getUserRole(
+            onSuccess = { role ->
+                if (role != "admin" && role != "petugas") {
+                    accessError = "Anda tidak memiliki akses ke halaman ini"
+                }
+            },
+            onFailure = { accessError = "Gagal memverifikasi akses" }
+        )
+    }
 
     fun applyFilter() {
         val query = searchQuery.trim().lowercase()
@@ -119,9 +135,25 @@ fun AllItemsScreen(
             }
     }
 
-    GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(title = "Semua Barang", onBackClick = onBack)
+    if (accessError != null) {
+        GalaxyBackground(starAlpha = 0.3f) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Akses Ditolak", onBackClick = onBack)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = accessError!!,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(24.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    } else {
+        GalaxyBackground(starAlpha = 0.3f) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Semua Barang", onBackClick = onBack)
 
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 OutlinedTextField(
@@ -184,6 +216,7 @@ fun AllItemsScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -196,8 +229,12 @@ private fun AllItemCard(item: Item, onClick: () -> Unit) {
             modifier = Modifier.padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val imageModel = remember(item.imageUrl) {
+                if (item.imageUrl.isBlank()) null
+                else ImageUploadHelper.imageModelFromUrl(item.imageUrl)
+            }
             AsyncImage(
-                model = item.imageUrl.ifBlank { null },
+                model = imageModel,
                 contentDescription = item.name,
                 modifier = Modifier
                     .size(64.dp)

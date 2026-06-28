@@ -32,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.example.rentease.ImageUploadHelper
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.Item
 import com.example.rentease.ui.components.AppToolbar
@@ -43,6 +44,7 @@ import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextLight
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.NumberFormat
 import java.util.Locale
@@ -73,45 +75,35 @@ fun FavoritesScreen(
                     return@addOnSuccessListener
                 }
 
-                var loaded = 0
-                val items = mutableListOf<Item>()
-                for (itemId in itemIds) {
-                    db.collection("items").document(itemId).get()
-                        .addOnSuccessListener { doc ->
-                            loaded++
-                            if (doc.exists()) {
-                                items.add(
-                                    Item(
-                                        id = doc.id,
-                                        name = doc.getString("name") ?: "",
-                                        description = doc.getString("description") ?: "",
-                                        price = doc.getDouble("price") ?: 0.0,
-                                        ownerId = doc.getString("ownerId") ?: "",
-                                        status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
-                                        imageUrl = doc.getString("imageUrl") ?: "",
-                                        createdAt = doc.getLong("createdAt") ?: 0L,
-                                        approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
-                                        rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
-                                        stock = (doc.getLong("stock") ?: 1L).toInt(),
-                                        category = doc.getString("category") ?: Item.CATEGORY_CAMERA
-                                    )
+                db.collection("items")
+                    .whereIn(FieldPath.documentId(), itemIds)
+                    .get()
+                    .addOnSuccessListener { itemsDoc ->
+                        val items = itemsDoc.mapNotNull { doc ->
+                            try {
+                                Item(
+                                    id = doc.id,
+                                    name = doc.getString("name") ?: "",
+                                    description = doc.getString("description") ?: "",
+                                    price = doc.getDouble("price") ?: 0.0,
+                                    ownerId = doc.getString("ownerId") ?: "",
+                                    status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
+                                    imageUrl = doc.getString("imageUrl") ?: "",
+                                    createdAt = doc.getLong("createdAt") ?: 0L,
+                                    approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
+                                    rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
+                                    stock = (doc.getLong("stock") ?: 1L).toInt(),
+                                    category = doc.getString("category") ?: Item.CATEGORY_CAMERA
                                 )
-                            }
-                            if (loaded >= itemIds.size) {
-                                favoriteItems.clear()
-                                favoriteItems.addAll(items)
-                                isLoading = false
-                            }
+                            } catch (_: Exception) { null }
                         }
-                        .addOnFailureListener {
-                            loaded++
-                            if (loaded >= itemIds.size) {
-                                favoriteItems.clear()
-                                favoriteItems.addAll(items)
-                                isLoading = false
-                            }
-                        }
-                }
+                        favoriteItems.clear()
+                        favoriteItems.addAll(items)
+                        isLoading = false
+                    }
+                    .addOnFailureListener {
+                        isLoading = false
+                    }
             }
             .addOnFailureListener {
                 isLoading = false
@@ -125,17 +117,16 @@ fun FavoritesScreen(
     fun removeFavorite(itemId: String) {
         val uid = authManager.getCurrentUserUID() ?: return
         db.collection("favorites")
-            .whereEqualTo("userId", uid)
             .whereEqualTo("itemId", itemId)
             .get()
             .addOnSuccessListener { snapshot ->
                 for (doc in snapshot) {
-                    db.collection("favorites").document(doc.id).delete()
+                    val docUserId = doc.getString("userId")
+                    if (docUserId == uid) {
+                        db.collection("favorites").document(doc.id).delete()
+                    }
                 }
-                favoriteItems.removeAll { it.id == itemId }
-            }
-            .addOnFailureListener {
-                favoriteItems.removeAll { it.id == itemId }
+                loadFavorites()
             }
     }
 
@@ -180,8 +171,9 @@ fun FavoritesScreen(
                                     radius = 12.dp
                                 ) {
                                     Column(modifier = Modifier.padding(8.dp)) {
+                                        val imageModel = remember(item.imageUrl) { ImageUploadHelper.imageModelFromUrl(item.imageUrl) }
                                         AsyncImage(
-                                            model = item.imageUrl,
+                                            model = imageModel,
                                             contentDescription = item.name,
                                             modifier = Modifier.fillMaxWidth().height(100.dp),
                                             contentScale = ContentScale.Crop

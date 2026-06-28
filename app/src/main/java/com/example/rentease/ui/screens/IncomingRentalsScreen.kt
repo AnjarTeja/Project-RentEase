@@ -22,6 +22,7 @@ import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -52,6 +53,7 @@ import com.example.rentease.ui.theme.WarningColor
 import com.example.rentease.Item
 import com.example.rentease.NotificationHelper
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import java.text.NumberFormat
 import java.util.Locale
@@ -68,38 +70,47 @@ fun IncomingRentalsScreen(
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val rentals = remember { mutableStateListOf<RentalRequest>() }
     var isLoading by remember { mutableStateOf(true) }
+    val listenerReg = remember { mutableStateOf<ListenerRegistration?>(null) }
+    val rentalsFull = remember { mutableStateListOf<RentalRequest>() }
 
-    fun loadRentals() {
-        val uid = authManager.getCurrentUserUID()
-        if (uid == null) { isLoading = false; return }
-        isLoading = true
-
+    fun applyFilter() {
         val filter = when (selectedTabIndex) {
             0 -> null
             1 -> RentalRequest.STATUS_PENDING
             2 -> RentalRequest.STATUS_APPROVED
             else -> null
         }
+        isLoading = true
+        val filtered = if (filter == null) rentalsFull.toList()
+            else rentalsFull.filter { it.status == filter }
+        rentals.clear()
+        rentals.addAll(filtered.sortedByDescending { it.createdAt })
+        isLoading = false
+    }
 
-        db.collection("rentals")
-            .whereEqualTo("ownerId", uid)
-            .get()
-            .addOnSuccessListener { docs ->
-                val result = docs.mapNotNull { doc ->
-                    try {
-                        doc.toObject(RentalRequest::class.java).copy(id = doc.id)
-                    } catch (e: Exception) { null }
-                }.filter { filter == null || it.status == filter }
-                    .sortedByDescending { it.createdAt }
-                rentals.clear()
-                rentals.addAll(result)
-                isLoading = false
-            }
-            .addOnFailureListener { isLoading = false }
+    DisposableEffect(Unit) {
+        val uid = authManager.getCurrentUserUID()
+        if (uid != null) {
+            val reg = db.collection("rentals")
+                .whereEqualTo("ownerId", uid)
+                .addSnapshotListener { snapshots, e ->
+                    if (e != null || snapshots == null) return@addSnapshotListener
+                    val result = snapshots.mapNotNull { doc ->
+                        try {
+                            doc.toObject(RentalRequest::class.java).copy(id = doc.id)
+                        } catch (e: Exception) { null }
+                    }
+                    rentalsFull.clear()
+                    rentalsFull.addAll(result.sortedByDescending { it.createdAt })
+                    applyFilter()
+                }
+            listenerReg.value = reg
+        }
+        onDispose { listenerReg.value?.remove() }
     }
 
     LaunchedEffect(selectedTabIndex) {
-        loadRentals()
+        applyFilter()
     }
 
     fun updateStatus(rental: RentalRequest, newStatus: String) {
@@ -109,7 +120,7 @@ fun IncomingRentalsScreen(
                     val currentStock = doc.getLong("stock")?.toInt() ?: 1
                     if (currentStock <= 0) {
                         Toast.makeText(context, "Stok barang habis, tidak dapat menyetujui", Toast.LENGTH_SHORT).show()
-                        loadRentals()
+                        applyFilter()
                         return@addOnSuccessListener
                     }
                     val newStock = currentStock - 1
@@ -125,7 +136,7 @@ fun IncomingRentalsScreen(
 
                     batch.commit().addOnSuccessListener {
                         NotificationHelper.showRentalStatusNotification(context, rental.itemName, newStatus)
-                        loadRentals()
+                        applyFilter()
                     }
                 }
         } else {
@@ -135,7 +146,7 @@ fun IncomingRentalsScreen(
             batch.update(rentalRef, "updatedAt", System.currentTimeMillis())
             batch.commit().addOnSuccessListener {
                 NotificationHelper.showRentalStatusNotification(context, rental.itemName, newStatus)
-                loadRentals()
+                applyFilter()
             }
         }
     }

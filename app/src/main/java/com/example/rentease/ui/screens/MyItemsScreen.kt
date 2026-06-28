@@ -41,6 +41,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.example.rentease.ImageUploadHelper
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.Item
 import com.example.rentease.ui.components.AppToolbar
@@ -207,8 +208,9 @@ fun MyItemsScreen(
                     items(filteredItems) { item ->
                         GlassCard(modifier = Modifier.fillMaxWidth(), radius = 12.dp) {
                             Row(modifier = Modifier.padding(8.dp)) {
+                                val imageModel = remember(item.imageUrl) { ImageUploadHelper.imageModelFromUrl(item.imageUrl) }
                                 AsyncImage(
-                                    model = item.imageUrl,
+                                    model = imageModel,
                                     contentDescription = item.name,
                                     modifier = Modifier
                                         .width(80.dp).height(80.dp)

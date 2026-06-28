@@ -61,7 +61,17 @@ fun ReportItemScreen(
     val auth = remember { FirebaseAuth.getInstance() }
     val authManager = remember { FirebaseAuthManager() }
     val reasons = remember {
-        listOf("Inappropriate", "Spam", "Fake", "Wrong Category", "Other")
+        listOf(
+            "Tidak Pantas",
+            "Spam",
+            "Barang Palsu",
+            "Kategori Salah",
+            "Harga Tidak Wajar",
+            "Barang Rusak",
+            "Tidak Sesuai Deskripsi",
+            "Penipuan",
+            "Lainnya"
+        )
     }
     var selectedReason by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -140,7 +150,7 @@ fun ReportItemScreen(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Tambahkan detail...") },
+                    label = { Text("Tambahkan detail pelaporan...") },
                     modifier = Modifier.fillMaxWidth().height(120.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Primary,

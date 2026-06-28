@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,6 +39,7 @@ import com.example.rentease.ChatMessage
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
+import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
@@ -62,59 +64,81 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     var isParticipant by remember { mutableStateOf(false) }
     var myName by remember { mutableStateOf("") }
+    var nameLoaded by remember { mutableStateOf(false) }
+    var accessError by remember { mutableStateOf<String?>(null) }
 
-    // Get current user's name
-    LaunchedEffect(Unit) {
+    val listenerReg = remember { mutableStateOf<ListenerRegistration?>(null) }
+
+    // Get current user's name and check role/access
+    LaunchedEffect(chatId) {
         val uid = auth.currentUser?.uid ?: return@LaunchedEffect
         db.collection("users").document(uid).get()
-            .addOnSuccessListener { doc ->
-                myName = doc.getString("name") ?: "Pengguna"
+            .addOnSuccessListener { userDoc ->
+                myName = userDoc.getString("name") ?: "Pengguna"
+                nameLoaded = true
+                val role = userDoc.getString("role") ?: ""
+                val isStaff = role == "admin" || role == "petugas"
+
+                db.collection("chats").document(chatId).get()
+                    .addOnSuccessListener { chatDoc ->
+                        if (!chatDoc.exists()) {
+                            accessError = "Chat tidak ditemukan"
+                            return@addOnSuccessListener
+                        }
+                        val renterId = chatDoc.getString("renterId") ?: ""
+                        val ownerId = chatDoc.getString("ownerId") ?: ""
+                        val hasAccess = isStaff || uid == renterId || uid == ownerId
+                        if (!hasAccess) {
+                            accessError = "Anda tidak memiliki akses ke chat ini"
+                            return@addOnSuccessListener
+                        }
+                        isParticipant = true
+
+                        val reg = db.collection("chats").document(chatId)
+                            .collection("messages")
+                            .orderBy("timestamp", Query.Direction.ASCENDING)
+                            .addSnapshotListener { snapshots, e ->
+                                if (e != null || snapshots == null) return@addSnapshotListener
+                                val msgs = snapshots.mapNotNull { doc ->
+                                    try {
+                                        ChatMessage(
+                                            id = doc.id,
+                                            chatId = chatId,
+                                            senderId = doc.getString("senderId") ?: "",
+                                            senderName = doc.getString("senderName") ?: "",
+                                            message = doc.getString("message") ?: "",
+                                            timestamp = doc.getLong("timestamp") ?: 0L
+                                        )
+                                    } catch (e: Exception) { null }
+                                }
+                                messages.clear()
+                                messages.addAll(msgs)
+                            }
+                        listenerReg.value = reg
+                    }
+                    .addOnFailureListener {
+                        accessError = "Gagal memuat chat"
+                    }
+            }
+            .addOnFailureListener {
+                nameLoaded = true
+                accessError = "Gagal memuat data user"
             }
     }
 
-    // Auto-scroll on new message
+    // Auto-scroll to latest message when new message arrives
+    var isNearBottom by remember { mutableStateOf(true) }
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
+        if (isNearBottom && messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
-
-    // Attach snapshot listener + cleanup on dispose
-    val listenerReg = remember { mutableStateOf<ListenerRegistration?>(null) }
-
-    LaunchedEffect(chatId) {
-        val uid = auth.currentUser?.uid ?: return@LaunchedEffect
-        db.collection("chats").document(chatId).get()
-            .addOnSuccessListener { chatDoc ->
-                val renterId = chatDoc.getString("renterId") ?: ""
-                val ownerId = chatDoc.getString("ownerId") ?: ""
-                if (uid != renterId && uid != ownerId) return@addOnSuccessListener
-                isParticipant = true
-
-                val reg = db.collection("chats").document(chatId)
-                    .collection("messages")
-                    .orderBy("timestamp", Query.Direction.ASCENDING)
-                    .addSnapshotListener { snapshots, e ->
-                        if (e != null || snapshots == null) return@addSnapshotListener
-                        val msgs = snapshots.mapNotNull { doc ->
-                            try {
-                                ChatMessage(
-                                    id = doc.id,
-                                    chatId = chatId,
-                                    senderId = doc.getString("senderId") ?: "",
-                                    senderName = doc.getString("senderName") ?: "",
-                                    message = doc.getString("message") ?: "",
-                                    timestamp = doc.getLong("timestamp") ?: 0L
-                                )
-                            } catch (e: Exception) { null }
-                        }
-                        messages.clear()
-                        messages.addAll(msgs)
-                    }
-                listenerReg.value = reg
-            }
+    // Track if user is near bottom
+    LaunchedEffect(listState.firstVisibleItemIndex) {
+        isNearBottom = listState.firstVisibleItemIndex >= messages.size - 3 || messages.isEmpty()
     }
 
+    // Cleanup listener
     DisposableEffect(chatId) {
         onDispose {
             listenerReg.value?.remove()
@@ -123,13 +147,12 @@ fun ChatScreen(
 
     fun sendMessage() {
         val text = messageText.trim()
-        if (text.isEmpty() || !isParticipant) return
+        if (text.isEmpty() || !isParticipant || !nameLoaded) return
         val uid = auth.currentUser?.uid ?: return
-        val name = if (myName.isNotEmpty()) myName else "Pengguna"
 
         val msg = hashMapOf(
             "senderId" to uid,
-            "senderName" to name,
+            "senderName" to myName,
             "message" to text,
             "timestamp" to System.currentTimeMillis()
         )
@@ -149,73 +172,91 @@ fun ChatScreen(
     }
 
     GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(title = "Chat", onBackClick = onBack)
+        Box(modifier = Modifier.fillMaxSize().imePadding()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Chat", onBackClick = onBack)
 
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(messages) { msg ->
-                    val isMe = msg.senderId == auth.currentUser?.uid
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
-                    ) {
-                        GlassCard(
-                            modifier = Modifier.width(280.dp),
-                            radius = 12.dp
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    if (accessError != null) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = accessError!!,
+                                color = ErrorColor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(24.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Text(
-                                    text = msg.message,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = TextDark
-                                )
-                                Text(
-                                    text = if (msg.timestamp > 0) {
-                                        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(msg.timestamp))
-                                    } else "",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = TextHint,
-                                    modifier = Modifier.align(Alignment.End)
-                                )
+                            items(messages) { msg ->
+                                val isMe = msg.senderId == auth.currentUser?.uid
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
+                                ) {
+                                    GlassCard(
+                                        modifier = Modifier.width(280.dp),
+                                        radius = 12.dp
+                                    ) {
+                                        Column(modifier = Modifier.padding(8.dp)) {
+                                            Text(
+                                                text = msg.message,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = TextDark
+                                            )
+                                            Text(
+                                                text = if (msg.timestamp > 0) {
+                                                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(msg.timestamp))
+                                                } else "",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextHint,
+                                                modifier = Modifier.align(Alignment.End)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = messageText,
-                    onValueChange = { messageText = it },
-                    placeholder = { Text("Ketik pesan...", color = TextHint) },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Primary,
-                        unfocusedBorderColor = TextHint.copy(alpha = 0.3f),
-                        cursorColor = Primary,
-                        focusedTextColor = TextDark,
-                        unfocusedTextColor = TextDark
-                    )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = { sendMessage() },
-                    enabled = messageText.trim().isNotEmpty()
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Kirim",
-                        tint = if (messageText.trim().isNotEmpty()) Primary else TextHint
-                    )
+                if (isParticipant) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            placeholder = { Text("Ketik pesan...", color = TextHint) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Primary,
+                                unfocusedBorderColor = TextHint.copy(alpha = 0.3f),
+                                cursorColor = Primary,
+                                focusedTextColor = TextDark,
+                                unfocusedTextColor = TextDark
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { sendMessage() },
+                            enabled = messageText.trim().isNotEmpty()
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Kirim",
+                                tint = if (messageText.trim().isNotEmpty()) Primary else TextHint
+                            )
+                        }
+                    }
                 }
             }
         }

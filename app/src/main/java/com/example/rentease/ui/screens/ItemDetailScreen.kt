@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.rentease.FirebaseAuthManager
+import com.example.rentease.ImageUploadHelper
 import com.example.rentease.Item
 import com.example.rentease.NotificationHelper
 import com.example.rentease.RentalRequest
@@ -58,6 +60,7 @@ import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -84,38 +87,46 @@ fun ItemDetailScreen(
     var rentNote by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
     var userRole by remember { mutableStateOf<String?>(null) }
+    val itemListener = remember { mutableStateOf<ListenerRegistration?>(null) }
 
     val uid = auth.currentUser?.uid
 
     LaunchedEffect(itemId) {
-        db.collection("items").document(itemId).get()
-            .addOnSuccessListener { doc ->
-                if (doc.exists()) {
-                    item = Item(
-                        id = doc.id,
-                        name = doc.getString("name") ?: "",
-                        description = doc.getString("description") ?: "",
-                        price = doc.getDouble("price") ?: 0.0,
-                        ownerId = doc.getString("ownerId") ?: "",
-                        status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
-                        imageUrl = doc.getString("imageUrl") ?: "",
-                        createdAt = doc.getLong("createdAt") ?: 0L,
-                        approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
-                        rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
-                        stock = (doc.getLong("stock") ?: 1L).toInt(),
-                        category = doc.getString("category") ?: Item.CATEGORY_CAMERA
-                    )
+        val reg = db.collection("items").document(itemId)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null || snapshot == null || !snapshot.exists()) {
                     isLoading = false
-                } else {
-                    isLoading = false
-                    errorMessage = "Barang tidak ditemukan"
+                    if (e != null) {
+                        errorMessage = "Gagal memuat: ${e.message}"
+                    } else {
+                        errorMessage = "Barang tidak ditemukan"
+                    }
+                    return@addSnapshotListener
                 }
-            }
-            .addOnFailureListener { e ->
+                item = Item(
+                    id = snapshot.id,
+                    name = snapshot.getString("name") ?: "",
+                    description = snapshot.getString("description") ?: "",
+                    price = snapshot.getDouble("price") ?: 0.0,
+                    ownerId = snapshot.getString("ownerId") ?: "",
+                    status = snapshot.getString("status") ?: Item.STATUS_AVAILABLE,
+                    imageUrl = snapshot.getString("imageUrl") ?: "",
+                    createdAt = snapshot.getLong("createdAt") ?: 0L,
+                    approvalStatus = snapshot.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
+                    rentCount = (snapshot.getLong("rentCount") ?: 0L).toInt(),
+                    stock = (snapshot.getLong("stock") ?: 1L).toInt(),
+                    category = snapshot.getString("category") ?: Item.CATEGORY_CAMERA
+                )
                 isLoading = false
-                errorMessage = "Gagal memuat: ${e.message}"
             }
+        itemListener.value = reg
+    }
 
+    DisposableEffect(itemId) {
+        onDispose { itemListener.value?.remove() }
+    }
+
+    LaunchedEffect(itemId) {
         if (uid != null) {
             db.collection("favorites")
                 .whereEqualTo("userId", uid)
@@ -264,8 +275,9 @@ fun ItemDetailScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp)
                 ) {
+                    val imageModel = remember(currentItem.imageUrl) { ImageUploadHelper.imageModelFromUrl(currentItem.imageUrl) }
                     AsyncImage(
-                        model = currentItem.imageUrl,
+                        model = imageModel,
                         contentDescription = currentItem.name,
                         modifier = Modifier.fillMaxWidth().height(250.dp),
                         contentScale = ContentScale.Crop
@@ -319,7 +331,14 @@ fun ItemDetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (uid != currentItem.ownerId && userRole != FirebaseAuthManager.ROLE_PETUGAS) {
+                    if (uid != null && uid == currentItem.ownerId) {
+                        Text(
+                            text = "Barang ini milik Anda sendiri",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextHint,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    } else if (uid != currentItem.ownerId && userRole != FirebaseAuthManager.ROLE_PETUGAS && userRole != FirebaseAuthManager.ROLE_ADMIN) {
                         val canRent = currentItem.status == Item.STATUS_AVAILABLE && currentItem.stock > 0
                         GlowButton(
                             text = if (canRent) "Ajukan Sewa" else "Tidak Tersedia",

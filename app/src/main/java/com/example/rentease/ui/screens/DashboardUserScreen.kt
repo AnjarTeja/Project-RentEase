@@ -38,6 +38,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -56,8 +57,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.example.rentease.ImageUploadHelper
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.Item
+import com.example.rentease.NotificationHelper
 import com.example.rentease.RentalRequest
 import com.example.rentease.ui.components.CategoryFilterChips
 import com.example.rentease.ui.components.ExitConfirmDialog
@@ -80,6 +83,8 @@ import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
 import com.example.rentease.ui.theme.WarningColor
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import java.text.NumberFormat
 import java.util.Locale
@@ -108,6 +113,7 @@ fun DashboardUserScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    var incomingCount by remember { mutableStateOf(0) }
 
     BackHandler { showExitDialog = true }
 
@@ -178,6 +184,65 @@ fun DashboardUserScreen(
             myItems.sortByDescending { it.rentCount }
         } catch (_: Exception) {}
         itemsLoading = false
+    }
+
+    // Real-time listener for incoming rental requests (owner notifications)
+    val incomingListener = remember { mutableStateOf<ListenerRegistration?>(null) }
+    val knownRentalIds = remember { mutableStateOf(setOf<String>()) }
+    DisposableEffect(Unit) {
+        val uid = authManager.getCurrentUserUID()
+        if (uid != null) {
+            val reg = db.collection("rentals")
+                .whereEqualTo("ownerId", uid)
+                .addSnapshotListener { snapshots, e ->
+                    if (e != null || snapshots == null) return@addSnapshotListener
+                    val pendingDocs = snapshots.documents.filter { doc ->
+                        doc.getString("status") == RentalRequest.STATUS_PENDING
+                    }
+                    val currentIds = pendingDocs.map { it.id }.toSet()
+                    val newIds = currentIds - knownRentalIds.value
+                    if (newIds.isNotEmpty()) {
+                        for (doc in snapshots.documents) {
+                            if (doc.id in newIds) {
+                                val renterName = doc.getString("renterName") ?: "Seseorang"
+                                val itemName = doc.getString("itemName") ?: "barang"
+                                val duration = (doc.getLong("duration") ?: 0).toInt()
+                                NotificationHelper.showOwnerRentalRequestNotification(
+                                    context = context,
+                                    renterName = renterName,
+                                    itemName = itemName,
+                                    duration = duration
+                                )
+                            }
+                        }
+                    }
+                    knownRentalIds.value = currentIds
+                    incomingCount = currentIds.size
+                }
+            incomingListener.value = reg
+        }
+        onDispose {
+            incomingListener.value?.remove()
+        }
+    }
+
+    // Real-time listener for rental stats (renter's own rentals)
+    val statsListener = remember { mutableStateOf<ListenerRegistration?>(null) }
+    DisposableEffect(Unit) {
+        val uid = authManager.getCurrentUserUID()
+        if (uid != null) {
+            val reg = db.collection("rentals")
+                .whereEqualTo("renterId", uid)
+                .addSnapshotListener { snapshots, e ->
+                    if (e != null || snapshots == null) return@addSnapshotListener
+                    val statuses = snapshots.documents.mapNotNull { it.getString("status") }
+                    statsPending = statuses.count { it == RentalRequest.STATUS_PENDING }.toString()
+                    statsActive = statuses.count { it == RentalRequest.STATUS_APPROVED || it == RentalRequest.STATUS_RETURN_PENDING }.toString()
+                    statsCompleted = statuses.count { it == RentalRequest.STATUS_RETURNED || it == RentalRequest.STATUS_REJECTED }.toString()
+                }
+            statsListener.value = reg
+        }
+        onDispose { statsListener.value?.remove() }
     }
 
     GalaxyBackground(starAlpha = 0.4f) {
@@ -292,8 +357,16 @@ fun DashboardUserScreen(
                                 icon = menu.icon,
                                 label = menu.label,
                                 tint = menu.tint,
-                                onClick = { navController.navigate(menu.route) },
-                                modifier = Modifier.weight(1f)
+                                onClick = {
+                                    if (menu.label == "Chat") {
+                                        navController.navigate(Screen.UserChat.route)
+                                    } else {
+                                        if (menu.label == "Penyewaan Masuk") incomingCount = 0
+                                        navController.navigate(menu.route)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                badgeCount = if (menu.label == "Penyewaan Masuk") incomingCount else 0
                             )
                         }
                     }
@@ -450,8 +523,9 @@ fun DashboardUserScreen(
                             ) {
                                 Row(modifier = Modifier.padding(8.dp)) {
                                     if (item.imageUrl.isNotEmpty()) {
+                                        val imageModel = remember(item.imageUrl) { ImageUploadHelper.imageModelFromUrl(item.imageUrl) }
                                         AsyncImage(
-                                            model = item.imageUrl,
+                                            model = imageModel,
                                             contentDescription = item.name,
                                             modifier = Modifier
                                                 .size(width = 72.dp, height = 72.dp)

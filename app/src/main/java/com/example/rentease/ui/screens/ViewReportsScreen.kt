@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ReportItem
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
@@ -88,9 +89,22 @@ fun ViewReportsScreen(
     var statLabel2 by remember { mutableStateOf("-") }
     var showExportError by remember { mutableStateOf(false) }
     var exportErrorMessage by remember { mutableStateOf("") }
+    var accessError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val authManager = FirebaseAuthManager()
+        authManager.getUserRole(
+            onSuccess = { role ->
+                if (role != "admin" && role != "petugas") {
+                    accessError = "Anda tidak memiliki akses ke halaman ini"
+                }
+            },
+            onFailure = { accessError = "Gagal memverifikasi akses" }
+        )
+    }
 
     val context = LocalContext.current
-    val reportTypes = listOf("Penyewaan (Rentals)", "Barang (Items)", "Pengguna (Users)")
+    val reportTypes = listOf("Penyewaan (Rentals)", "Barang (Items)", "Pengguna (Users)", "Laporan Barang")
     val dateFilters = listOf("Semua Waktu", "Hari Ini", "7 Hari", "30 Hari", "Bulan Ini")
 
     val periodLabel = dateFilters[selectedDateFilter]
@@ -176,7 +190,7 @@ fun ViewReportsScreen(
             }
     }
 
-    fun loadItemReports(startTime: Long) {
+    fun loadItemsReport(startTime: Long) {
         isLoading = true
         errorMessage = null
         statLabel1 = "Total Barang"
@@ -204,6 +218,42 @@ fun ViewReportsScreen(
                 reports = list.sortedByDescending { it.timestamp }
                 statVal1 = totalCount.toString()
                 statVal2 = availableCount.toString()
+                isLoading = false
+            }
+            .addOnFailureListener {
+                errorMessage = "Gagal memuat data laporan"
+                isLoading = false
+            }
+    }
+
+    fun loadItemReports(startTime: Long) {
+        isLoading = true
+        errorMessage = null
+        statLabel1 = "Total Laporan"
+        statLabel2 = "Pending"
+        db.collection("item_reports").get()
+            .addOnSuccessListener { documents ->
+                val list = mutableListOf<ReportItem>()
+                var pendingCount = 0
+                var totalCount = 0
+                for (doc in documents) {
+                    val createdAt = doc.getLong("createdAt") ?: 0L
+                    if (createdAt < startTime) continue
+                    totalCount++
+                    val status = doc.getString("status") ?: "pending"
+                    if (status == "pending") pendingCount++
+                    list.add(
+                        ReportItem(
+                            title = "Laporan Barang: ${doc.getString("itemName") ?: "Barang"}",
+                            subtitle = "Pelapor: ${doc.getString("reporterName") ?: "-"} | Alasan: ${doc.getString("reason") ?: "-"} | ${doc.getString("description") ?: ""}",
+                            dateStr = dateFormat.format(Date(createdAt)),
+                            timestamp = createdAt
+                        )
+                    )
+                }
+                reports = list.sortedByDescending { it.timestamp }
+                statVal1 = totalCount.toString()
+                statVal2 = pendingCount.toString()
                 isLoading = false
             }
             .addOnFailureListener {
@@ -255,8 +305,9 @@ fun ViewReportsScreen(
     fun loadReports(type: Int, startTime: Long) {
         when (type) {
             0 -> loadRentalReports(startTime)
-            1 -> loadItemReports(startTime)
+            1 -> loadItemsReport(startTime)
             2 -> loadUserReports(startTime)
+            3 -> loadItemReports(startTime)
         }
     }
 
@@ -264,11 +315,27 @@ fun ViewReportsScreen(
         loadReports(selectedType, getFilterStartTime())
     }
 
-    GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(
-                title = "Laporan",
-                onBackClick = onBack,
+    if (accessError != null) {
+        GalaxyBackground(starAlpha = 0.3f) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(title = "Akses Ditolak", onBackClick = onBack)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = accessError!!,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(24.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    } else {
+        GalaxyBackground(starAlpha = 0.3f) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppToolbar(
+                    title = "Laporan",
+                    onBackClick = onBack,
                 trailingIcon = {
                     IconButton(onClick = {
                         if (reports.isEmpty()) {
@@ -368,7 +435,7 @@ fun ViewReportsScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard(
-                    icon = when (selectedType) { 0 -> Icons.Default.ShoppingCart; 1 -> Icons.Default.Inventory; else -> Icons.Default.Person },
+                    icon = when (selectedType) { 0 -> Icons.Default.ShoppingCart; 1 -> Icons.Default.Inventory; 2 -> Icons.Default.Person; else -> Icons.Default.Description },
                     value = statVal1,
                     label = statLabel1,
                     modifier = Modifier.weight(1f),
@@ -461,6 +528,7 @@ fun ViewReportsScreen(
                 }
             }
         }
+    }
     }
 
     if (showExportError) {

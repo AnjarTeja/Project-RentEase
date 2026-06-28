@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.rentease.FirebaseAuthManager
+import com.example.rentease.ImageUploadHelper
 import com.example.rentease.Item
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
@@ -108,7 +109,6 @@ fun AddEditItemScreen(
                         val imageUrl = doc.getString("imageUrl")
                         if (!imageUrl.isNullOrEmpty()) {
                             existingImageUrl = imageUrl
-                            try { selectedImageUri = Uri.parse(imageUrl) } catch (_: Exception) {}
                         }
                         val status = doc.getString("status")
                         selectedStatus = when (status) {
@@ -117,12 +117,8 @@ fun AddEditItemScreen(
                             Item.STATUS_MAINTENANCE -> 2
                             else -> 0
                         }
-                        if (isUserMode) {
-                            selectedCategory = 0
-                        } else {
-                            val category = doc.getString("category") ?: Item.CATEGORY_CAMERA
-                            selectedCategory = Item.CATEGORIES.indexOf(category).coerceAtLeast(0)
-                        }
+                        val category = doc.getString("category") ?: Item.CATEGORY_CAMERA
+                        selectedCategory = Item.CATEGORIES.indexOf(category).coerceAtLeast(0)
                     }
                     isLoading = false
                 }
@@ -155,7 +151,7 @@ fun AddEditItemScreen(
             }
         }
         val approvalStatus = if (isUserMode) Item.APPROVAL_PENDING else Item.APPROVAL_APPROVED
-        val category = if (isUserMode) categories[0] else categories[selectedCategory]
+        val category = categories[selectedCategory]
 
         isSaving = true
         errorMessage = null
@@ -243,7 +239,7 @@ fun AddEditItemScreen(
                     }
 
                     if (selectedImageUri != null || existingImageUrl.isNotEmpty()) {
-                        val imageModel = selectedImageUri ?: existingImageUrl
+                        val imageModel = selectedImageUri ?: ImageUploadHelper.imageModelFromUrl(existingImageUrl)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -336,33 +332,31 @@ fun AddEditItemScreen(
                         }
                     }
 
-                    if (!isUserMode) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                        ExposedDropdownMenuBox(
+                    ExposedDropdownMenuBox(
+                        expanded = categoryExpanded,
+                        onExpandedChange = { categoryExpanded = !categoryExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = categories[selectedCategory],
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Kategori") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            colors = textFieldColors()
+                        )
+                        ExposedDropdownMenu(
                             expanded = categoryExpanded,
-                            onExpandedChange = { categoryExpanded = !categoryExpanded },
-                            modifier = Modifier.fillMaxWidth()
+                            onDismissRequest = { categoryExpanded = false }
                         ) {
-                            OutlinedTextField(
-                                value = categories[selectedCategory],
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Kategori") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                colors = textFieldColors()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = categoryExpanded,
-                                onDismissRequest = { categoryExpanded = false }
-                            ) {
-                                categories.forEachIndexed { index, cat ->
-                                    DropdownMenuItem(
-                                        text = { Text(cat, color = TextDark) },
-                                        onClick = { selectedCategory = index; categoryExpanded = false }
-                                    )
-                                }
+                            categories.forEachIndexed { index, cat ->
+                                DropdownMenuItem(
+                                    text = { Text(cat, color = TextDark) },
+                                    onClick = { selectedCategory = index; categoryExpanded = false }
+                                )
                             }
                         }
                     }
@@ -378,6 +372,7 @@ fun AddEditItemScreen(
                         text = when {
                             isSaving -> "Menyimpan..."
                             isEditMode -> "Simpan Perubahan"
+                            isUserMode -> "Ajukan Barang"
                             else -> "Simpan Data Barang"
                         },
                         onClick = { saveItem() },

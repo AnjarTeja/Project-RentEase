@@ -70,7 +70,7 @@ fun CustomerServiceScreen(
     var allTickets by remember { mutableStateOf<List<SupportTicket>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var userRole by remember { mutableStateOf("petugas") }
+    var userRole by remember { mutableStateOf("user") }
     var currentTab by remember { mutableStateOf(0) }
 
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID")) }
@@ -78,20 +78,14 @@ fun CustomerServiceScreen(
     val tabs = listOf("Terbuka", "Diproses", "Selesai")
     val tabStatuses = listOf(SupportTicket.STATUS_OPEN, SupportTicket.STATUS_IN_PROGRESS, SupportTicket.STATUS_RESOLVED)
 
-    val filteredTickets = if (currentTab == 0) {
-        allTickets.filter { it.status == SupportTicket.STATUS_OPEN }
-    } else if (currentTab == 1) {
-        allTickets.filter { it.status == SupportTicket.STATUS_IN_PROGRESS }
-    } else {
-        allTickets.filter { it.status == SupportTicket.STATUS_RESOLVED }
-    }
+    val filteredTickets = allTickets.filter { it.status == tabStatuses[currentTab] }
 
     LaunchedEffect(Unit) {
         authManager.getUserData(
             onSuccess = { data ->
-                userRole = data["role"] as? String ?: "petugas"
+                userRole = data["role"] as? String ?: "user"
             },
-            onFailure = { userRole = "petugas" }
+            onFailure = { userRole = "user" }
         )
     }
 

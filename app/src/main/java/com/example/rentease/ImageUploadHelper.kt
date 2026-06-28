@@ -7,16 +7,11 @@ import android.graphics.Matrix
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageMetadata
-import com.google.firebase.storage.UploadTask
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.util.UUID
 
 object ImageUploadHelper {
 
-    private val storage = FirebaseStorage.getInstance().reference
     private val auth = FirebaseAuth.getInstance()
 
     fun uploadProfileImage(
@@ -107,10 +102,6 @@ object ImageUploadHelper {
         onSuccess: (downloadUrl: String) -> Unit,
         onFailure: (String) -> Unit
     ) {
-        val uid = auth.currentUser?.uid ?: "unknown"
-        val fileName = "${folder}/${uid}_${UUID.randomUUID()}.jpg"
-        val ref = storage.child(fileName)
-
         try {
             val inputStream = context.contentResolver.openInputStream(imageUri)
             if (inputStream == null) {
@@ -163,25 +154,27 @@ object ImageUploadHelper {
                 rawBytes
             }
 
-            val metadata = StorageMetadata.Builder()
-                .setContentType("image/jpeg")
-                .build()
-
-            ref.putBytes(uploadBytes, metadata)
-                .addOnSuccessListener {
-                    ref.downloadUrl.addOnSuccessListener { uri ->
-                        onSuccess(uri.toString())
-                    }.addOnFailureListener {
-                        onFailure("Gagal mendapatkan URL gambar")
-                    }
-                }
-                .addOnFailureListener { e ->
-                    onFailure("Gagal upload: ${e.message}")
-                }
+            // Gunakan Base64 langsung agar mengabaikan error Firebase Storage
+            val base64String = android.util.Base64.encodeToString(uploadBytes, android.util.Base64.NO_WRAP)
+            onSuccess("data:image/jpeg;base64,$base64String")
 
         } catch (e: Exception) {
             e.printStackTrace()
             onFailure("Gagal upload: ${e.message}")
+        }
+    }
+
+    fun imageModelFromUrl(url: String): Any {
+        return if (url.isNotEmpty() && url.startsWith("data:image") && url.contains("base64,")) {
+            try {
+                val base64String = url.substringAfter("base64,")
+                val imageBytes = android.util.Base64.decode(base64String, android.util.Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size) ?: url
+            } catch (e: Exception) {
+                url
+            }
+        } else {
+            url
         }
     }
 }

@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.example.rentease.ImageUploadHelper
 import com.example.rentease.Item
 import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.CategoryFilterChips
@@ -343,8 +344,9 @@ private fun BrowseItemCard(item: Item, onClick: () -> Unit) {
             modifier = Modifier.clickable { onClick() }.padding(8.dp)
         ) {
             Box {
+                val imageModel = remember(item.imageUrl) { ImageUploadHelper.imageModelFromUrl(item.imageUrl) }
                 AsyncImage(
-                    model = item.imageUrl,
+                    model = imageModel,
                     contentDescription = item.name,
                     modifier = Modifier.fillMaxWidth().height(120.dp),
                     contentScale = ContentScale.Crop

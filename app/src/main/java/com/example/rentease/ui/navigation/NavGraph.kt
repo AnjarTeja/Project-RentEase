@@ -32,6 +32,7 @@ import com.example.rentease.ui.screens.RegisterScreen
 import com.example.rentease.ui.screens.ReportItemScreen
 import com.example.rentease.ui.screens.SplashScreen
 import com.example.rentease.ui.screens.TicketDetailScreen
+import com.example.rentease.ui.screens.UserChatScreen
 import com.example.rentease.ui.screens.UserComplaintsScreen
 import com.example.rentease.ui.screens.AllItemsScreen
 import com.example.rentease.ui.screens.VerifyRentalScreen
@@ -269,6 +270,13 @@ fun RentEaseNavGraph(navController: NavHostController) {
 
         composable(Screen.UserComplaints.route) {
             UserComplaintsScreen(
+                navController = navController,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.UserChat.route) {
+            UserChatScreen(
                 navController = navController,
                 onBack = { navController.popBackStack() }
             )
