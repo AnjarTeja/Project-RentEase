@@ -1,0 +1,166 @@
+{
+  "metadata": {
+    "projectName": "RentEase",
+    "description": "Contoh file JSON representasi data Firestore untuk demo dan presentasi",
+    "generatedAt": "2026-06-29"
+  },
+  "collections": {
+    "users": [
+      {
+        "id": "user_001",
+        "name": "Andi Pratama",
+        "email": "andi@example.com",
+        "phone": "081234567890",
+        "role": "user",
+        "createdAt": 1710000000000
+      },
+      {
+        "id": "user_002",
+        "name": "Bunga Sari",
+        "email": "bunga@example.com",
+        "phone": "082345678901",
+        "role": "user",
+        "createdAt": 1710001000000
+      },
+      {
+        "id": "petugas_001",
+        "name": "Rina Petugas",
+        "email": "petugas@gmail.com",
+        "phone": "083456789012",
+        "role": "petugas",
+        "createdAt": 1710002000000
+      },
+      {
+        "id": "admin_001",
+        "name": "Admin RentEase",
+        "email": "admin@gmail.com",
+        "phone": "084567890123",
+        "role": "admin",
+        "createdAt": 1710003000000
+      }
+    ],
+    "items": [
+      {
+        "id": "item_001",
+        "name": "Canon EOS 700D",
+        "description": "Kamera DSLR cocok untuk dokumentasi dan konten",
+        "price": 150000,
+        "ownerId": "user_002",
+        "status": "available",
+        "imageUrl": "https://example.com/images/canon.jpg",
+        "createdAt": 1710004000000,
+        "approvalStatus": "approved",
+        "rentCount": 4,
+        "stock": 1,
+        "category": "Kamera"
+      },
+      {
+        "id": "item_002",
+        "name": "MacBook Air M1",
+        "description": "Laptop ringan untuk editing dan kerja",
+        "price": 300000,
+        "ownerId": "user_001",
+        "status": "available",
+        "imageUrl": "https://example.com/images/macbook.jpg",
+        "createdAt": 1710005000000,
+        "approvalStatus": "approved",
+        "rentCount": 2,
+        "stock": 1,
+        "category": "Laptop"
+      },
+      {
+        "id": "item_003",
+        "name": "iPhone 14 Pro",
+        "description": "Smartphone premium untuk kebutuhan sehari-hari",
+        "price": 250000,
+        "ownerId": "user_001",
+        "status": "rented",
+        "imageUrl": "https://example.com/images/iphone.jpg",
+        "createdAt": 1710006000000,
+        "approvalStatus": "approved",
+        "rentCount": 6,
+        "stock": 1,
+        "category": "Smartphone"
+      }
+    ],
+    "rentals": [
+      {
+        "id": "rental_001",
+        "itemName": "iPhone 14 Pro",
+        "itemId": "item_003",
+        "renterName": "Andi Pratama",
+        "renterEmail": "andi@example.com",
+        "renterId": "user_001",
+        "ownerId": "user_001",
+        "startDate": "2026-06-20",
+        "endDate": "2026-06-22",
+        "duration": 2,
+        "status": "approved",
+        "createdAt": 1710007000000,
+        "updatedAt": 1710008000000,
+        "note": "Peminjaman untuk kebutuhan pekerjaan",
+        "pricePerDay": 125000,
+        "itemImageUrl": "https://example.com/images/iphone.jpg",
+        "rating": 0,
+        "overdueDays": 0,
+        "fineAmount": 0,
+        "actualReturnDate": "",
+        "isOverdue": false
+      },
+      {
+        "id": "rental_002",
+        "itemName": "Canon EOS 700D",
+        "itemId": "item_001",
+        "renterName": "Bunga Sari",
+        "renterEmail": "bunga@example.com",
+        "renterId": "user_002",
+        "ownerId": "user_002",
+        "startDate": "2026-06-24",
+        "endDate": "2026-06-26",
+        "duration": 2,
+        "status": "pending",
+        "createdAt": 1710009000000,
+        "updatedAt": 1710010000000,
+        "note": "Butuh kamera untuk acara",
+        "pricePerDay": 75000,
+        "itemImageUrl": "https://example.com/images/canon.jpg",
+        "rating": 0,
+        "overdueDays": 0,
+        "fineAmount": 0,
+        "actualReturnDate": "",
+        "isOverdue": false
+      }
+    ],
+    "complaints": [
+      {
+        "id": "complaint_001",
+        "userId": "user_001",
+        "userName": "Andi Pratama",
+        "userEmail": "andi@example.com",
+        "subject": "Barang tidak sesuai deskripsi",
+        "message": "Saya menerima barang namun ada perbedaan dengan deskripsi",
+        "status": "open",
+        "createdAt": 1710011000000,
+        "replyMessage": "",
+        "repliedAt": 0,
+        "repliedBy": "",
+        "repliedByName": ""
+      }
+    ],
+    "chats": [
+      {
+        "id": "chat_001",
+        "rentalId": "rental_001",
+        "itemId": "item_003",
+        "itemName": "iPhone 14 Pro",
+        "renterId": "user_001",
+        "renterName": "Andi Pratama",
+        "ownerId": "user_001",
+        "ownerName": "Andi Pratama",
+        "lastMessage": "Barang sudah diterima, terima kasih",
+        "lastMessageTime": 1710012000000,
+        "createdAt": 1710010000000
+      }
+    ]
+  }
+}
