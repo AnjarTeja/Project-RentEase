@@ -49,6 +49,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.rentease.FirebaseAuthManager
@@ -59,18 +60,18 @@ import com.example.rentease.ui.components.NebulaHeader
 import com.example.rentease.ui.components.RoleBadge
 import com.example.rentease.ui.components.StatCard
 import com.example.rentease.ui.navigation.Screen
-import com.example.rentease.ui.theme.Primary
-import com.example.rentease.ui.theme.PrimaryLight
+import com.example.rentease.ui.theme.PrimaryBlue
+import com.example.rentease.ui.theme.BlueSoftBg
 import com.example.rentease.ui.theme.PurpleAccent
-import com.example.rentease.ui.theme.SuccessColor
-import com.example.rentease.ui.theme.TechCardBg
-import com.example.rentease.ui.theme.TextDark
-import com.example.rentease.ui.theme.TextLight
-import com.example.rentease.ui.theme.WarningColor
+import com.example.rentease.ui.theme.SuccessGreen
+import com.example.rentease.ui.theme.TextPrimary
+import com.example.rentease.ui.theme.TextSecondary
+import com.example.rentease.ui.theme.WarningOrange
+import com.example.rentease.ui.theme.White
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
-private data class AdminMenuItem(val label: String, val icon: ImageVector, val route: String, val tint: Color = Primary)
+private data class AdminMenuItem(val label: String, val icon: ImageVector, val route: String, val tint: Color = PrimaryBlue)
 
 @Composable
 fun DashboardAdminScreen(
@@ -100,16 +101,16 @@ fun DashboardAdminScreen(
 
     val menus = remember {
         listOf(
-            AdminMenuItem("Cari Barang", Icons.Default.Search, Screen.BrowseItems.route, Primary),
-            AdminMenuItem("Tambah Barang", Icons.Default.Add, Screen.AddEditItem.createRoute(fromUser = false), Primary),
-            AdminMenuItem("Kelola User", Icons.Default.Group, Screen.ManageUsers.route, Primary),
-            AdminMenuItem("Kelola Barang", Icons.Default.Inventory, Screen.ManageItems.route, WarningColor),
-            AdminMenuItem("Verif. Rental", Icons.Default.CheckCircle, Screen.VerifyRental.route, Primary),
-            AdminMenuItem("Verif. Barang", Icons.Default.Verified, Screen.VerifyUserItems.route, SuccessColor),
-            AdminMenuItem("Pengembalian", Icons.Default.Restore, Screen.ManageReturns.route, Primary),
+            AdminMenuItem("Cari Barang", Icons.Default.Search, Screen.BrowseItems.route, PrimaryBlue),
+            AdminMenuItem("Tambah Barang", Icons.Default.Add, Screen.AddEditItem.createRoute(fromUser = false), PrimaryBlue),
+            AdminMenuItem("Kelola User", Icons.Default.Group, Screen.ManageUsers.route, PrimaryBlue),
+            AdminMenuItem("Kelola Barang", Icons.Default.Inventory, Screen.ManageItems.route, WarningOrange),
+            AdminMenuItem("Verif. Rental", Icons.Default.CheckCircle, Screen.VerifyRental.route, PrimaryBlue),
+            AdminMenuItem("Verif. Barang", Icons.Default.Verified, Screen.VerifyUserItems.route, SuccessGreen),
+            AdminMenuItem("Pengembalian", Icons.Default.Restore, Screen.ManageReturns.route, PrimaryBlue),
             AdminMenuItem("Laporan", Icons.Default.Report, Screen.ViewReports.route, PurpleAccent),
-            AdminMenuItem("Komplain", Icons.Default.SupportAgent, Screen.UserComplaints.route, WarningColor),
-            AdminMenuItem("Layanan", Icons.AutoMirrored.Filled.Help, Screen.CustomerService.route, Primary)
+            AdminMenuItem("Komplain", Icons.Default.SupportAgent, Screen.UserComplaints.route, WarningOrange),
+            AdminMenuItem("Layanan", Icons.AutoMirrored.Filled.Help, Screen.CustomerService.route, PrimaryBlue)
         )
     }
 
@@ -128,11 +129,10 @@ fun DashboardAdminScreen(
         } catch (_: Exception) {}
     }
 
-    GalaxyBackground(starAlpha = 0.4f) {
+    GalaxyBackground {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
         ) {
             NebulaHeader {
                 Row(
@@ -143,7 +143,7 @@ fun DashboardAdminScreen(
                         modifier = Modifier
                             .size(54.dp)
                             .clip(CircleShape)
-                            .background(TechCardBg)
+                            .background(White)
                             .clickable { navController.navigate(Screen.ProfileAdmin.route) },
                         contentAlignment = Alignment.Center
                     ) {
@@ -167,7 +167,7 @@ fun DashboardAdminScreen(
                                 error = androidx.compose.ui.res.painterResource(com.example.rentease.R.drawable.ic_launcher_foreground)
                             )
                         } else {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(28.dp))
+                            Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(28.dp))
                         }
                     }
                     Spacer(modifier = Modifier.width(14.dp))
@@ -177,86 +177,94 @@ fun DashboardAdminScreen(
                         Text(
                             text = userName,
                             style = MaterialTheme.typography.titleLarge,
-                            color = TextDark,
+                            color = White,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        RoleBadge(role = "Admin", textColor = PurpleAccent)
+                        RoleBadge(role = "Admin", textColor = PrimaryBlue)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .background(BlueSoftBg)
             ) {
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Person,
-                    value = statUsers,
-                    label = "Pengguna",
-                    iconTint = Primary,
-                    valueColor = Primary
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.ShoppingCart,
-                    value = statTransactions,
-                    label = "Transaksi",
-                    iconTint = SuccessColor,
-                    valueColor = SuccessColor
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Inventory,
-                    value = statItems,
-                    label = "Barang",
-                    iconTint = WarningColor,
-                    valueColor = WarningColor
-                )
-            }
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = "Menu Admin",
-                style = MaterialTheme.typography.titleMedium,
-                color = TextLight,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            menus.chunked(3).forEach { row ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    row.forEach { menu ->
-                        MenuGridItem(
-                            icon = menu.icon,
-                            label = menu.label,
-                            tint = menu.tint,
-                            onClick = { navController.navigate(menu.route) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Person,
+                        value = statUsers,
+                        label = "Pengguna",
+                        iconTint = PrimaryBlue,
+                        valueColor = PrimaryBlue
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.ShoppingCart,
+                        value = statTransactions,
+                        label = "Transaksi",
+                        iconTint = SuccessGreen,
+                        valueColor = SuccessGreen
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Inventory,
+                        value = statItems,
+                        label = "Barang",
+                        iconTint = WarningOrange,
+                        valueColor = WarningOrange
+                    )
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(
-                color = Primary.copy(alpha = 0.15f),
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Menu Admin",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                menus.chunked(3).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        row.forEach { menu ->
+                            MenuGridItem(
+                                icon = menu.icon,
+                                label = menu.label,
+                                tint = menu.tint,
+                                onClick = { navController.navigate(menu.route) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider(
+                    color = PrimaryBlue.copy(alpha = 0.15f),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 }

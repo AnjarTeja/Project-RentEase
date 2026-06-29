@@ -29,8 +29,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,21 +43,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.rentease.ui.theme.ErrorColor
-import com.example.rentease.ui.theme.Primary
+import coil.compose.AsyncImage
+import com.example.rentease.ui.theme.BlueDark
+import com.example.rentease.ui.theme.BlueLight
+import com.example.rentease.ui.theme.ErrorRed
+import com.example.rentease.ui.theme.PrimaryBlue
 import com.example.rentease.ui.theme.PurpleAccent
-import com.example.rentease.ui.theme.TechCardBg
-import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
-import com.example.rentease.ui.theme.TextLight
+import com.example.rentease.ui.theme.TextPrimary
+import com.example.rentease.ui.theme.TextSecondary
+import com.example.rentease.ui.theme.White
 import com.example.rentease.Item
 
 @Composable
@@ -72,6 +73,7 @@ fun AppToolbar(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .background(PrimaryBlue)
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -80,13 +82,13 @@ fun AppToolbar(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                tint = Color.White
+                tint = White
             )
         }
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            color = TextDark,
+            color = White,
             modifier = Modifier.weight(1f)
         )
         if (trailingIcon != null) {
@@ -101,8 +103,8 @@ fun InfoRow(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
-    iconTint: Color = Primary,
-    valueColor: Color = TextDark
+    iconTint: Color = PrimaryBlue,
+    valueColor: Color = TextPrimary
 ) {
     GlowCard(modifier = modifier) {
         Row(
@@ -119,7 +121,7 @@ fun InfoRow(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = TextLight
+                    color = TextSecondary
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -138,16 +140,16 @@ fun StatCard(
     value: String,
     label: String,
     modifier: Modifier = Modifier,
-    iconTint: Color = Primary,
-    valueColor: Color = Primary
+    iconTint: Color = PrimaryBlue,
+    valueColor: Color = PrimaryBlue
 ) {
-    GlowCard(
+    GlassCard(
         modifier = modifier,
         radius = 12.dp
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
         ) {
             Icon(
                 imageVector = icon,
@@ -165,7 +167,7 @@ fun StatCard(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = TextLight,
+                color = TextSecondary,
                 textAlign = TextAlign.Center
             )
         }
@@ -193,7 +195,7 @@ fun StatItem(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodySmall,
-                color = TextLight
+                color = TextSecondary
             )
         }
     }
@@ -218,7 +220,7 @@ fun MenuGridItem(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(tint.copy(alpha = 0.15f)),
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(tint.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(20.dp))
@@ -227,7 +229,7 @@ fun MenuGridItem(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextLight,
+                    color = TextSecondary,
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
@@ -239,13 +241,13 @@ fun MenuGridItem(
                         .absoluteOffset(x = 4.dp, y = (-4).dp)
                         .size(20.dp)
                         .clip(CircleShape)
-                        .background(ErrorColor),
+                        .background(ErrorRed),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = if (badgeCount > 99) "99+" else badgeCount.toString(),
                         style = MaterialTheme.typography.labelSmall,
-                        color = androidx.compose.ui.graphics.Color.White,
+                        color = White,
                         fontSize = 10.sp
                     )
                 }
@@ -258,12 +260,12 @@ fun MenuGridItem(
 fun RoleBadge(
     role: String,
     modifier: Modifier = Modifier,
-    textColor: Color = Primary
+    textColor: Color = PrimaryBlue
 ) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        color = TechCardBg
+        color = BlueLight
     ) {
         Text(
             text = role.uppercase(),
@@ -281,8 +283,8 @@ fun GlowButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    backgroundColor: Color = Primary,
-    textColor: Color = TechCardBg,
+    backgroundColor: Color = PrimaryBlue,
+    textColor: Color = White,
     icon: ImageVector? = null
 ) {
     Button(
@@ -325,14 +327,14 @@ fun AvatarCircle(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(TechCardBg),
+            .background(BlueLight),
         contentAlignment = Alignment.Center
     ) {
         if (imageUrl.isNullOrBlank()) {
             Icon(
                 imageVector = Icons.Default.Person,
                 contentDescription = "Avatar",
-                tint = TextLight,
+                tint = TextSecondary,
                 modifier = Modifier.size(size * 0.5f)
             )
         } else {
@@ -360,7 +362,7 @@ fun ExitConfirmDialog(
             GlowCard(
                 modifier = Modifier.padding(32.dp).fillMaxWidth(),
                 radius = 24.dp,
-                borderColor = Primary.copy(alpha = 0.4f)
+                borderColor = PrimaryBlue.copy(alpha = 0.3f)
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -370,20 +372,20 @@ fun ExitConfirmDialog(
                         modifier = Modifier
                             .size(width = 40.dp, height = 4.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(Primary)
+                            .background(PrimaryBlue)
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
                         text = "Keluar Aplikasi",
                         style = MaterialTheme.typography.titleLarge,
-                        color = TextDark,
+                        color = TextPrimary,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Apakah Anda yakin ingin keluar?",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextLight
+                        color = TextSecondary
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Row(
@@ -395,8 +397,8 @@ fun ExitConfirmDialog(
                             modifier = Modifier.weight(1f).height(48.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2A2A4E),
-                                contentColor = TextLight
+                                containerColor = BlueLight,
+                                contentColor = TextPrimary
                             )
                         ) {
                             Text("Batal")
@@ -406,8 +408,8 @@ fun ExitConfirmDialog(
                             modifier = Modifier.weight(1f).height(48.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Primary,
-                                contentColor = TechCardBg
+                                containerColor = PrimaryBlue,
+                                contentColor = White
                             )
                         ) {
                             Text("Keluar")
@@ -432,7 +434,7 @@ fun CategoryFilterChips(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            color = TechCardBg.copy(alpha = 0.5f)
+            color = BlueLight
         ) {
             Row(
                 modifier = Modifier
@@ -442,7 +444,7 @@ fun CategoryFilterChips(
             ) {
                 Text(
                     text = "Kategori: $label",
-                    color = TextDark,
+                    color = TextPrimary,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
@@ -463,7 +465,7 @@ fun CategoryFilterChips(
                     Text(
                         "Semua",
                         fontWeight = if (selectedCategory == null) FontWeight.Bold else FontWeight.Normal,
-                        color = if (selectedCategory == null) Primary else TextDark
+                        color = if (selectedCategory == null) PrimaryBlue else TextPrimary
                     )
                 },
                 onClick = { onCategorySelected(null); expanded = false }
@@ -474,7 +476,7 @@ fun CategoryFilterChips(
                         Text(
                             cat,
                             fontWeight = if (selectedCategory == cat) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedCategory == cat) Primary else TextDark
+                            color = if (selectedCategory == cat) PrimaryBlue else TextPrimary
                         )
                     },
                     onClick = { onCategorySelected(cat); expanded = false }

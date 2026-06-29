@@ -12,19 +12,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.rentease.ui.theme.TechCardBg
+import com.example.rentease.ui.theme.PrimaryBlue
+import com.example.rentease.ui.theme.White
 
 @Composable
 fun GlowCard(
     modifier: Modifier = Modifier,
     radius: Dp = 12.dp,
-    borderColor: Color = Color(0xFF00D9FF).copy(alpha = 0.3f),
+    borderColor: Color = PrimaryBlue.copy(alpha = 0.2f),
     content: @Composable () -> Unit
 ) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(radius))
-            .background(TechCardBg)
+            .background(White)
             .border(
                 width = 1.dp,
                 brush = Brush.horizontalGradient(

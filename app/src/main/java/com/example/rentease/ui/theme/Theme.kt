@@ -1,24 +1,24 @@
 package com.example.rentease.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
-private val RentEaseDarkColorScheme = darkColorScheme(
-    primary = Primary,
-    onPrimary = TechDarkBg,
-    primaryContainer = PrimaryDark,
-    secondary = PurpleAccent,
-    onSecondary = TechDarkBg,
-    tertiary = WarningColor,
-    background = TechDarkBg,
-    onBackground = TextDark,
-    surface = TechCardBg,
-    onSurface = TextDark,
-    surfaceVariant = TechSurface,
-    onSurfaceVariant = TextLight,
-    error = ErrorColor,
-    onError = TextDark,
+private val RentEaseLightColorScheme = lightColorScheme(
+    primary = PrimaryBlue,
+    onPrimary = White,
+    primaryContainer = BlueLight,
+    secondary = BlueAccent,
+    onSecondary = White,
+    tertiary = WarningOrange,
+    background = White,
+    onBackground = TextPrimary,
+    surface = White,
+    onSurface = TextPrimary,
+    surfaceVariant = SurfaceGray,
+    onSurfaceVariant = TextSecondary,
+    error = ErrorRed,
+    onError = White,
     outline = DividerColor,
     outlineVariant = TextHint
 )
@@ -26,7 +26,7 @@ private val RentEaseDarkColorScheme = darkColorScheme(
 @Composable
 fun RentEaseTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = RentEaseDarkColorScheme,
+        colorScheme = RentEaseLightColorScheme,
         typography = RentEaseTypography,
         shapes = RentEaseShapes,
         content = content

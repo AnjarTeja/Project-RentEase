@@ -16,13 +16,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.rentease.ui.theme.BlueDark
+import com.example.rentease.ui.theme.PrimaryBlue
 
 val NebulaGradient = Brush.horizontalGradient(
     colors = listOf(
-        Color(0xFF1A1A3E),
-        Color(0xFF0F0F2E),
-        Color(0xFF16213E),
-        Color(0xFF1A1A3E)
+        PrimaryBlue,
+        BlueDark
     )
 )
 

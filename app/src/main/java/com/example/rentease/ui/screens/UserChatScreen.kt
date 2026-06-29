@@ -2,6 +2,7 @@ package com.example.rentease.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,18 +42,17 @@ import androidx.navigation.NavHostController
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.RentalRequest
 import com.example.rentease.ui.components.AppToolbar
-import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
-import com.example.rentease.ui.components.GlowCard
 import com.example.rentease.ui.components.InfoRow
 import com.example.rentease.ui.components.RoleBadge
-import com.example.rentease.ui.theme.ErrorColor
-import com.example.rentease.ui.theme.Primary
-import com.example.rentease.ui.theme.SuccessColor
-import com.example.rentease.ui.theme.TextDark
+import com.example.rentease.ui.theme.BlueSoftBg
+import com.example.rentease.ui.theme.ErrorRed
+import com.example.rentease.ui.theme.PrimaryBlue
+import com.example.rentease.ui.theme.SuccessGreen
 import com.example.rentease.ui.theme.TextHint
-import com.example.rentease.ui.theme.TextLight
-import com.example.rentease.ui.theme.WarningColor
+import com.example.rentease.ui.theme.TextPrimary
+import com.example.rentease.ui.theme.TextSecondary
+import com.example.rentease.ui.theme.WarningOrange
 import com.google.firebase.firestore.FirebaseFirestore
 
 private const val WA_NUMBER = "6282316627926"
@@ -97,107 +97,109 @@ fun UserChatScreen(
 
     fun statusBadge(status: String): @Composable () -> Unit = {
         val (label, color) = when (status) {
-            RentalRequest.STATUS_PENDING -> "Menunggu" to WarningColor
-            RentalRequest.STATUS_APPROVED -> "Disetujui" to SuccessColor
-            RentalRequest.STATUS_REJECTED -> "Ditolak" to ErrorColor
-            RentalRequest.STATUS_RETURNED -> "Selesai" to Primary
-            RentalRequest.STATUS_RETURN_PENDING -> "Menunggu Verifikasi" to WarningColor
-            else -> status to TextLight
+            RentalRequest.STATUS_PENDING -> "Menunggu" to WarningOrange
+            RentalRequest.STATUS_APPROVED -> "Disetujui" to SuccessGreen
+            RentalRequest.STATUS_REJECTED -> "Ditolak" to ErrorRed
+            RentalRequest.STATUS_RETURNED -> "Selesai" to PrimaryBlue
+            RentalRequest.STATUS_RETURN_PENDING -> "Menunggu Verifikasi" to WarningOrange
+            else -> status to TextSecondary
         }
         RoleBadge(role = label, textColor = color)
     }
 
-    GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(title = "Hubungi Pemilik", onBackClick = onBack)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BlueSoftBg)
+    ) {
+        AppToolbar(title = "Hubungi Pemilik", onBackClick = onBack)
 
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Memuat...", color = TextLight)
-                }
-            } else if (rentals.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Belum ada barang yang disewa",
-                        color = TextLight
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(rentals) { rental ->
-                        GlassCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            radius = 12.dp
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Memuat...", color = TextSecondary)
+            }
+        } else if (rentals.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "Belum ada barang yang disewa",
+                    color = TextSecondary
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(rentals) { rental ->
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        radius = 12.dp
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { openWhatsApp(rental.itemName) }
+                                .padding(16.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { openWhatsApp(rental.itemName) }
-                                    .padding(16.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = rental.itemName,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = TextDark,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = rental.renterName,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = TextHint,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    statusBadge(rental.status)()
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                InfoRow(
-                                    icon = Icons.Default.CalendarMonth,
-                                    label = "Tanggal",
-                                    value = "${rental.startDate} - ${rental.endDate}",
-                                    iconTint = Primary
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                InfoRow(
-                                    icon = Icons.Default.ShoppingCart,
-                                    label = "Durasi",
-                                    value = "${rental.duration} hari",
-                                    iconTint = Primary
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.Send,
-                                        contentDescription = null,
-                                        tint = Primary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Tanya via WhatsApp",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = Primary,
-                                        fontWeight = FontWeight.Medium
+                                        text = rental.itemName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = rental.renterName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextHint,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                statusBadge(rental.status)()
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            InfoRow(
+                                icon = Icons.Default.CalendarMonth,
+                                label = "Tanggal",
+                                value = "${rental.startDate} - ${rental.endDate}",
+                                iconTint = PrimaryBlue
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            InfoRow(
+                                icon = Icons.Default.ShoppingCart,
+                                label = "Durasi",
+                                value = "${rental.duration} hari",
+                                iconTint = PrimaryBlue
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = null,
+                                    tint = PrimaryBlue,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Tanya via WhatsApp",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = PrimaryBlue,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
                     }

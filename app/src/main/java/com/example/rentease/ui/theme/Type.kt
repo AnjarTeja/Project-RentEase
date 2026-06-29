@@ -9,42 +9,42 @@ val RentEaseTypography = Typography(
     headlineLarge = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
-        color = TextDark
+        color = TextPrimary
     ),
     headlineMedium = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp,
-        color = TextDark
+        color = TextPrimary
     ),
     headlineSmall = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize = 20.sp,
-        color = TextDark
+        color = TextPrimary
     ),
     titleLarge = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize = 18.sp,
-        color = TextDark
+        color = TextPrimary
     ),
     titleMedium = TextStyle(
         fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp,
-        color = TextDark
+        color = TextPrimary
     ),
     titleSmall = TextStyle(
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
-        color = TextDark
+        color = TextPrimary
     ),
     bodyLarge = TextStyle(
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
-        color = TextLight
+        color = TextSecondary
     ),
     bodyMedium = TextStyle(
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
-        color = TextLight
+        color = TextSecondary
     ),
     bodySmall = TextStyle(
         fontWeight = FontWeight.Normal,
@@ -54,7 +54,7 @@ val RentEaseTypography = Typography(
     labelLarge = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
-        color = TextDark
+        color = TextPrimary
     ),
     labelSmall = TextStyle(
         fontWeight = FontWeight.Normal,

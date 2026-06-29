@@ -18,22 +18,27 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Call
@@ -78,6 +83,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavHostController
@@ -85,20 +91,16 @@ import coil.compose.AsyncImage
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ImageUploadHelper
 import com.example.rentease.R
-import com.example.rentease.ui.components.AppToolbar
-import com.example.rentease.ui.components.GalaxyBackground
-import com.example.rentease.ui.components.GlassCard
-import com.example.rentease.ui.components.GlowCard
-import com.example.rentease.ui.components.NebulaGradient
 import com.example.rentease.ui.components.RoleBadge
 import com.example.rentease.ui.navigation.Screen
-import com.example.rentease.ui.theme.ErrorColor
-import com.example.rentease.ui.theme.Primary
-import com.example.rentease.ui.theme.PrimaryLight
-import com.example.rentease.ui.theme.TechCardBg
-import com.example.rentease.ui.theme.TextDark
+import com.example.rentease.ui.theme.BlueDark
+import com.example.rentease.ui.theme.BlueLight
+import com.example.rentease.ui.theme.ErrorRed
+import com.example.rentease.ui.theme.PrimaryBlue
 import com.example.rentease.ui.theme.TextHint
-import com.example.rentease.ui.theme.TextLight
+import com.example.rentease.ui.theme.TextPrimary
+import com.example.rentease.ui.theme.TextSecondary
+import com.example.rentease.ui.theme.White
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -222,13 +224,12 @@ fun ProfilePetugasScreen(
 
     LaunchedEffect(Unit) { loadProfile() }
 
-    GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            AppToolbar(
-                title = if (isEditing) "Edit Profil" else "Profil Petugas",
-                onBackClick = if (isEditing) {{ isEditing = false; saveError = null }} else onBack
-            )
-
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(White)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
             when {
                 loading && !isRefreshing -> ShimmerProfileSkeleton()
                 error != null && !isRefreshing -> Box(
@@ -238,7 +239,7 @@ fun ProfilePetugasScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             "Gagal memuat profil",
-                            color = ErrorColor,
+                            color = ErrorRed,
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(Modifier.height(8.dp))
@@ -251,12 +252,12 @@ fun ProfilePetugasScreen(
                         Surface(
                             onClick = { loading = true; error = null; loadProfile() },
                             shape = RoundedCornerShape(12.dp),
-                            color = Primary
+                            color = PrimaryBlue
                         ) {
                             Text(
                                 "Coba Lagi",
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp),
-                                color = TechCardBg,
+                                color = White,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -265,14 +266,12 @@ fun ProfilePetugasScreen(
                 else -> PullToRefreshBox(
                     isRefreshing = isRefreshing,
                     onRefresh = { isRefreshing = true; loadProfile() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         ProfileHeaderSection(
                             name = name,
@@ -281,120 +280,142 @@ fun ProfilePetugasScreen(
                             isEditing = isEditing,
                             uploading = uploading,
                             uploadError = uploadError,
+                            onBack = { navController.popBackStack() },
                             onPickImage = { imagePicker.launch("image/*") },
                             onDeletePhoto = { handleDeletePhoto() },
                             onPreview = { showPreview = true }
                         )
 
-                        Text(
-                            text = "Informasi Profil",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = TextLight,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        AnimatedVisibility(
-                            visible = isEditing,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
+                        Column(
+                            modifier = Modifier.padding(horizontal = 16.dp).padding(top = 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            EditProfileFields(
-                                editName = editName,
-                                editPhone = editPhone,
-                                editNik = editNik,
-                                editAddress = editAddress,
-                                onNameChange = { editName = it },
-                                onPhoneChange = { editPhone = it },
-                                onNikChange = { editNik = it },
-                                onAddressChange = { editAddress = it },
-                                saveError = saveError
-                            )
-                        }
-
-                        AnimatedVisibility(
-                            visible = !isEditing,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            ProfileInfoCard(
-                                phone = phone,
-                                nik = nik,
-                                address = address,
-                                joined = joined
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        if (isEditing) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                ProfileActionButton(
-                                    text = "Batal",
-                                    onClick = { isEditing = false; saveError = null },
-                                    modifier = Modifier.weight(1f),
-                                    backgroundColor = Color(0xFF2A2A4E)
+                                Text(
+                                    text = "Informasi Profil",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
                                 )
-                                ProfileActionButton(
-                                    text = "Simpan",
-                                    onClick = {
-                                        if (editName.isBlank()) {
-                                            saveError = "Nama tidak boleh kosong"
-                                            return@ProfileActionButton
-                                        }
-                                        saveError = null
-                                        val uid = authManager.getCurrentUserUID()
-                                        if (uid == null) {
-                                            saveError = "Sesi tidak valid, silakan login ulang"
-                                            return@ProfileActionButton
-                                        }
-                                        val updates = hashMapOf<String, Any>(
-                                            "name" to editName,
-                                            "phone" to editPhone,
-                                            "nik" to editNik,
-                                            "address" to editAddress
-                                        )
-                                        db.collection("users").document(uid)
-                                            .set(updates, com.google.firebase.firestore.SetOptions.merge())
-                                            .addOnSuccessListener { loadProfile(); isEditing = false }
-                                            .addOnFailureListener { e -> saveError = "Gagal menyimpan: ${e.message}" }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    backgroundColor = Primary
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(1.dp)
+                                        .background(Color(0xFFE0E0E0))
                                 )
                             }
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                ProfileActionButton(
-                                    text = "Edit Profil",
-                                    icon = Icons.Default.Edit,
-                                    onClick = {
-                                        editName = name
-                                        editPhone = phone
-                                        editNik = nik
-                                        editAddress = address
-                                        saveError = null
-                                        isEditing = true
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    backgroundColor = Primary
-                                )
-                                ProfileActionButton(
-                                    text = "Keluar",
-                                    icon = Icons.AutoMirrored.Filled.ExitToApp,
-                                    onClick = { showLogoutDialog = true },
-                                    modifier = Modifier.weight(1f),
-                                    backgroundColor = ErrorColor
-                                )
-                            }
-                        }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            AnimatedVisibility(
+                                visible = isEditing,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                EditProfileFields(
+                                    editName = editName,
+                                    editPhone = editPhone,
+                                    editNik = editNik,
+                                    editAddress = editAddress,
+                                    onNameChange = { editName = it },
+                                    onPhoneChange = { editPhone = it },
+                                    onNikChange = { editNik = it },
+                                    onAddressChange = { editAddress = it },
+                                    saveError = saveError
+                                )
+                            }
+
+                            AnimatedVisibility(
+                                visible = !isEditing,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                ProfileInfoCard(
+                                    phone = phone,
+                                    nik = nik,
+                                    address = address,
+                                    joined = joined
+                                )
+                            }
+
+                            if (isEditing) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    ProfileActionButton(
+                                        text = "Batal",
+                                        onClick = { isEditing = false; saveError = null },
+                                        modifier = Modifier.weight(1f),
+                                        backgroundColor = White,
+                                        textColor = TextPrimary,
+                                        borderColor = Color(0xFFDDDDDD)
+                                    )
+                                    ProfileActionButton(
+                                        text = "Simpan",
+                                        onClick = {
+                                            if (editName.isBlank()) {
+                                                saveError = "Nama tidak boleh kosong"
+                                                return@ProfileActionButton
+                                            }
+                                            saveError = null
+                                            val uid = authManager.getCurrentUserUID()
+                                            if (uid == null) {
+                                                saveError = "Sesi tidak valid, silakan login ulang"
+                                                return@ProfileActionButton
+                                            }
+                                            val updates = hashMapOf<String, Any>(
+                                                "name" to editName,
+                                                "phone" to editPhone,
+                                                "nik" to editNik,
+                                                "address" to editAddress
+                                            )
+                                            db.collection("users").document(uid)
+                                                .set(updates, com.google.firebase.firestore.SetOptions.merge())
+                                                .addOnSuccessListener { loadProfile(); isEditing = false }
+                                                .addOnFailureListener { e -> saveError = "Gagal menyimpan: ${e.message}" }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        backgroundColor = PrimaryBlue,
+                                        textColor = White
+                                    )
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    ProfileActionButton(
+                                        text = "Edit Profil",
+                                        icon = Icons.Default.Edit,
+                                        onClick = {
+                                            editName = name
+                                            editPhone = phone
+                                            editNik = nik
+                                            editAddress = address
+                                            saveError = null
+                                            isEditing = true
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        backgroundColor = PrimaryBlue,
+                                        textColor = White
+                                    )
+                                    ProfileActionButton(
+                                        text = "Keluar",
+                                        icon = Icons.AutoMirrored.Filled.ExitToApp,
+                                        onClick = { showLogoutDialog = true },
+                                        modifier = Modifier.weight(1f),
+                                        backgroundColor = ErrorRed,
+                                        textColor = White
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }
@@ -411,14 +432,14 @@ fun ProfilePetugasScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Keluar Akun", color = TextDark, fontWeight = FontWeight.Bold) },
-            text = { Text("Apakah Anda yakin ingin keluar?", color = TextLight) },
+            title = { Text("Keluar Akun", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text("Apakah Anda yakin ingin keluar?", color = TextSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     authManager.logout()
                     navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
                 }) {
-                    Text("Ya, Keluar", color = ErrorColor, fontWeight = FontWeight.SemiBold)
+                    Text("Ya, Keluar", color = ErrorRed, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
@@ -426,7 +447,7 @@ fun ProfilePetugasScreen(
                     Text("Batal", color = TextHint)
                 }
             },
-            containerColor = TechCardBg,
+            containerColor = White,
             shape = RoundedCornerShape(16.dp)
         )
     }
@@ -440,6 +461,7 @@ private fun ProfileHeaderSection(
     isEditing: Boolean,
     uploading: Boolean,
     uploadError: String?,
+    onBack: () -> Unit,
     onPickImage: () -> Unit,
     onDeletePhoto: () -> Unit,
     onPreview: () -> Unit
@@ -447,29 +469,54 @@ private fun ProfileHeaderSection(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-            .background(NebulaGradient)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(PrimaryBlue, BlueDark)
+                )
+            )
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, end = 20.dp, top = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Kembali",
+                        tint = White
+                    )
+                }
+                Text(
+                    text = if (isEditing) "Edit Profil" else "Profil Petugas",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = White,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
-                    .size(120.dp)
-                    .then(
-                        if (isEditing) Modifier.clickable { onPickImage() }
-                        else Modifier.clickable { onPreview() }
-                    )
+                    .size(124.dp)
+                    .clip(CircleShape)
+                    .clickable(enabled = !uploading) { if (isEditing) onPickImage() else onPreview() }
             ) {
                 Box(
                     modifier = Modifier
                         .size(120.dp)
                         .clip(CircleShape)
-                        .border(2.dp, Primary.copy(alpha = 0.6f), CircleShape)
-                        .background(TechCardBg),
+                        .border(3.dp, White.copy(alpha = 0.8f), CircleShape)
+                        .background(BlueLight)
+                        .align(Alignment.Center),
                     contentAlignment = Alignment.Center
                 ) {
                     if (!profileImageUrl.isNullOrBlank()) {
@@ -501,7 +548,7 @@ private fun ProfileHeaderSection(
                         Icon(
                             Icons.Default.Person,
                             contentDescription = null,
-                            tint = PrimaryLight,
+                            tint = PrimaryBlue.copy(alpha = 0.5f),
                             modifier = Modifier.size(56.dp)
                         )
                     }
@@ -511,7 +558,8 @@ private fun ProfileHeaderSection(
                         modifier = Modifier
                             .size(120.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.45f)),
+                            .background(Color.Black.copy(alpha = 0.45f))
+                            .align(Alignment.Center),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -534,7 +582,7 @@ private fun ProfileHeaderSection(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
                                 .size(32.dp)
-                                .background(ErrorColor.copy(alpha = 0.8f), CircleShape)
+                                .background(ErrorRed.copy(alpha = 0.8f), CircleShape)
                         ) {
                             Icon(
                                 Icons.Default.Delete,
@@ -551,7 +599,7 @@ private fun ProfileHeaderSection(
                 Text(
                     "Mengunggah...",
                     style = MaterialTheme.typography.labelSmall,
-                    color = TextHint
+                    color = TextSecondary
                 )
             }
             if (uploadError != null) {
@@ -559,7 +607,7 @@ private fun ProfileHeaderSection(
                 Text(
                     uploadError,
                     style = MaterialTheme.typography.labelSmall,
-                    color = ErrorColor,
+                    color = ErrorRed,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
@@ -568,39 +616,46 @@ private fun ProfileHeaderSection(
             Text(
                 name,
                 style = MaterialTheme.typography.headlineSmall,
-                color = TextDark,
+                color = White,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 email,
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextLight
+                color = White.copy(alpha = 0.8f)
             )
             Spacer(modifier = Modifier.height(12.dp))
             RoleBadge(role = "Petugas")
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
 
 @Composable
 private fun ProfileInfoCard(phone: String, nik: String, address: String, joined: String) {
-    GlowCard(modifier = Modifier.fillMaxWidth(), radius = 16.dp) {
-        Column(modifier = Modifier.fillMaxWidth().padding(0.dp)) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = White,
+        shadowElevation = 2.dp,
+        tonalElevation = 1.dp
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             ProfileInfoRow(Icons.Default.Call, "No. Telepon", phone)
             HorizontalDivider(
-                color = TextHint.copy(alpha = 0.1f),
-                modifier = Modifier.padding(horizontal = 12.dp)
+                color = Color(0xFFEEEEEE),
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             ProfileInfoRow(Icons.Default.VpnKey, "NIK", nik)
             HorizontalDivider(
-                color = TextHint.copy(alpha = 0.1f),
-                modifier = Modifier.padding(horizontal = 12.dp)
+                color = Color(0xFFEEEEEE),
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             ProfileInfoRow(Icons.Default.Home, "Alamat", address)
             HorizontalDivider(
-                color = TextHint.copy(alpha = 0.1f),
-                modifier = Modifier.padding(horizontal = 12.dp)
+                color = Color(0xFFEEEEEE),
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             ProfileInfoRow(
                 Icons.Default.CalendarMonth,
@@ -617,25 +672,25 @@ private fun ProfileInfoRow(
     icon: ImageVector,
     label: String,
     value: String,
-    valueColor: Color = TextDark
+    valueColor: Color = TextPrimary
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Primary.copy(alpha = 0.12f)),
+                .background(PrimaryBlue.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 icon,
                 contentDescription = label,
-                tint = Primary,
+                tint = PrimaryBlue,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -644,14 +699,17 @@ private fun ProfileInfoRow(
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
-                color = TextHint
+                color = TextHint,
+                fontSize = 11.sp,
+                letterSpacing = 0.5.sp
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
-                value,
+                value.ifBlank { "-" },
                 style = MaterialTheme.typography.bodyMedium,
                 color = valueColor,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.2.sp
             )
         }
     }
@@ -669,18 +727,24 @@ private fun EditProfileFields(
     onAddressChange: (String) -> Unit,
     saveError: String?
 ) {
-    GlassCard(modifier = Modifier.fillMaxWidth(), radius = 16.dp) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = White,
+        shadowElevation = 2.dp,
+        tonalElevation = 1.dp
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             OutlinedTextField(
                 value = editName,
                 onValueChange = onNameChange,
                 label = { Text("Nama Lengkap") },
-                leadingIcon = { Icon(Icons.Default.Person, null, tint = Primary) },
+                leadingIcon = { Icon(Icons.Default.Person, null, tint = PrimaryBlue) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = fieldColors()
@@ -689,7 +753,7 @@ private fun EditProfileFields(
                 value = editPhone,
                 onValueChange = onPhoneChange,
                 label = { Text("No. Telepon") },
-                leadingIcon = { Icon(Icons.Default.Call, null, tint = Primary) },
+                leadingIcon = { Icon(Icons.Default.Call, null, tint = PrimaryBlue) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = fieldColors()
@@ -698,7 +762,7 @@ private fun EditProfileFields(
                 value = editNik,
                 onValueChange = onNikChange,
                 label = { Text("NIK") },
-                leadingIcon = { Icon(Icons.Default.VpnKey, null, tint = Primary) },
+                leadingIcon = { Icon(Icons.Default.VpnKey, null, tint = PrimaryBlue) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = fieldColors()
@@ -707,7 +771,7 @@ private fun EditProfileFields(
                 value = editAddress,
                 onValueChange = onAddressChange,
                 label = { Text("Alamat") },
-                leadingIcon = { Icon(Icons.Default.Home, null, tint = Primary) },
+                leadingIcon = { Icon(Icons.Default.Home, null, tint = PrimaryBlue) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = fieldColors()
@@ -718,7 +782,7 @@ private fun EditProfileFields(
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             saveError,
-            color = ErrorColor,
+            color = ErrorRed,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(start = 4.dp)
         )
@@ -730,16 +794,18 @@ private fun ProfileActionButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = Primary,
-    icon: ImageVector? = null
+    backgroundColor: Color = PrimaryBlue,
+    textColor: Color = White,
+    icon: ImageVector? = null,
+    borderColor: Color? = null
 ) {
     Surface(
         onClick = onClick,
         modifier = modifier.height(50.dp),
         shape = RoundedCornerShape(14.dp),
         color = backgroundColor,
-        tonalElevation = 4.dp,
-        shadowElevation = 8.dp
+        border = borderColor?.let { BorderStroke(1.dp, it) },
+        shadowElevation = if (borderColor != null) 0.dp else 2.dp
     ) {
         Row(
             modifier = Modifier
@@ -752,7 +818,7 @@ private fun ProfileActionButton(
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = TechCardBg,
+                    tint = textColor,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -760,7 +826,7 @@ private fun ProfileActionButton(
             Text(
                 text,
                 style = MaterialTheme.typography.labelLarge,
-                color = TechCardBg,
+                color = textColor,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -825,9 +891,9 @@ private fun AvatarPreviewDialog(imageUrl: String, onDismiss: () -> Unit) {
 @Composable
 private fun ShimmerProfileSkeleton() {
     val shimmerColors = listOf(
-        Color(0xFF1A1A2E),
-        Color(0xFF252545),
-        Color(0xFF1A1A2E)
+        Color(0xFFE0E0E0),
+        Color(0xFFF5F5F5),
+        Color(0xFFE0E0E0)
     )
 
     val transition = rememberInfiniteTransition(label = "shimmer")
@@ -954,11 +1020,11 @@ private fun ShimmerProfileSkeleton() {
 
 @Composable
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = Primary,
+    focusedBorderColor = PrimaryBlue,
     unfocusedBorderColor = TextHint.copy(alpha = 0.3f),
-    focusedLabelColor = Primary,
+    focusedLabelColor = PrimaryBlue,
     unfocusedLabelColor = TextHint,
-    cursorColor = Primary,
-    focusedTextColor = TextDark,
-    unfocusedTextColor = TextDark
+    cursorColor = PrimaryBlue,
+    focusedTextColor = TextPrimary,
+    unfocusedTextColor = TextPrimary
 )

@@ -47,30 +47,31 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ui.components.ExitConfirmDialog
 import com.example.rentease.ui.components.GalaxyBackground
-import com.example.rentease.ui.components.GlassCard
 import com.example.rentease.ui.components.MenuGridItem
 import com.example.rentease.ui.components.NebulaHeader
 import com.example.rentease.ui.components.RoleBadge
 import com.example.rentease.ui.components.StatCard
 import com.example.rentease.ui.navigation.Screen
-import com.example.rentease.ui.theme.Primary
-import com.example.rentease.ui.theme.PrimaryLight
+import com.example.rentease.ui.theme.BlueDark
+import com.example.rentease.ui.theme.BlueSoftBg
+import com.example.rentease.ui.theme.PrimaryBlue
 import com.example.rentease.ui.theme.PurpleAccent
-import com.example.rentease.ui.theme.SuccessColor
-import com.example.rentease.ui.theme.TechCardBg
-import com.example.rentease.ui.theme.TextDark
+import com.example.rentease.ui.theme.SuccessGreen
 import com.example.rentease.ui.theme.TextHint
-import com.example.rentease.ui.theme.TextLight
-import com.example.rentease.ui.theme.WarningColor
+import com.example.rentease.ui.theme.TextPrimary
+import com.example.rentease.ui.theme.TextSecondary
+import com.example.rentease.ui.theme.WarningOrange
+import com.example.rentease.ui.theme.White
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
-private data class PetugasMenuItem(val label: String, val icon: ImageVector, val route: String, val tint: Color = Primary)
+private data class PetugasMenuItem(val label: String, val icon: ImageVector, val route: String, val tint: Color = PrimaryBlue)
 
 @Composable
 fun DashboardPetugasScreen(
@@ -100,14 +101,14 @@ fun DashboardPetugasScreen(
 
     val menus = remember {
         listOf(
-            PetugasMenuItem("Semua Barang", Icons.Default.Search, Screen.AllItems.route, Primary),
-            PetugasMenuItem("Tambah Barang", Icons.Default.Add, Screen.AddEditItem.createRoute(fromUser = false), Primary),
-            PetugasMenuItem("Verif. Rental", Icons.Default.CheckCircle, Screen.VerifyRental.route, Primary),
-            PetugasMenuItem("Kelola Barang", Icons.Default.Inventory, Screen.ManageItems.route, WarningColor),
-            PetugasMenuItem("Verif. Barang", Icons.Default.Verified, Screen.VerifyUserItems.route, SuccessColor),
-            PetugasMenuItem("Pengembalian", Icons.Default.Restore, Screen.ManageReturns.route, Primary),
+            PetugasMenuItem("Semua Barang", Icons.Default.Search, Screen.AllItems.route, PrimaryBlue),
+            PetugasMenuItem("Tambah Barang", Icons.Default.Add, Screen.AddEditItem.createRoute(fromUser = false), PrimaryBlue),
+            PetugasMenuItem("Verif. Rental", Icons.Default.CheckCircle, Screen.VerifyRental.route, PrimaryBlue),
+            PetugasMenuItem("Kelola Barang", Icons.Default.Inventory, Screen.ManageItems.route, WarningOrange),
+            PetugasMenuItem("Verif. Barang", Icons.Default.Verified, Screen.VerifyUserItems.route, SuccessGreen),
+            PetugasMenuItem("Pengembalian", Icons.Default.Restore, Screen.ManageReturns.route, PrimaryBlue),
             PetugasMenuItem("Laporan", Icons.Default.RateReview, Screen.ViewReports.route, PurpleAccent),
-            PetugasMenuItem("Layanan", Icons.AutoMirrored.Filled.Help, Screen.CustomerService.route, Primary)
+            PetugasMenuItem("Layanan", Icons.AutoMirrored.Filled.Help, Screen.CustomerService.route, PrimaryBlue)
         )
     }
 
@@ -128,11 +129,10 @@ fun DashboardPetugasScreen(
         } catch (_: Exception) {}
     }
 
-    GalaxyBackground(starAlpha = 0.4f) {
+    GalaxyBackground {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
         ) {
             NebulaHeader {
                 Row(
@@ -143,7 +143,7 @@ fun DashboardPetugasScreen(
                         modifier = Modifier
                             .size(54.dp)
                             .clip(CircleShape)
-                            .background(TechCardBg)
+                            .background(White)
                             .clickable { navController.navigate(Screen.ProfilePetugas.route) },
                         contentAlignment = Alignment.Center
                     ) {
@@ -167,7 +167,7 @@ fun DashboardPetugasScreen(
                                 error = androidx.compose.ui.res.painterResource(com.example.rentease.R.drawable.ic_launcher_foreground)
                             )
                         } else {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(28.dp))
+                            Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(28.dp))
                         }
                     }
                     Spacer(modifier = Modifier.width(14.dp))
@@ -177,86 +177,94 @@ fun DashboardPetugasScreen(
                         Text(
                             text = userName,
                             style = MaterialTheme.typography.titleLarge,
-                            color = TextDark,
+                            color = White,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        RoleBadge(role = "Petugas", textColor = Primary)
+                        RoleBadge(role = "Petugas", textColor = PrimaryBlue)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .background(BlueSoftBg)
             ) {
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.History,
-                    value = statsPending,
-                    label = "Pending",
-                    iconTint = WarningColor,
-                    valueColor = WarningColor
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.CheckCircle,
-                    value = statsApproved,
-                    label = "Disetujui",
-                    iconTint = SuccessColor,
-                    valueColor = SuccessColor
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Inventory,
-                    value = statsItems,
-                    label = "Barang",
-                    iconTint = Primary,
-                    valueColor = Primary
-                )
-            }
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = "Menu Petugas",
-                style = MaterialTheme.typography.titleMedium,
-                color = TextLight,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            menus.chunked(3).forEach { row ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    row.forEach { menu ->
-                        MenuGridItem(
-                            icon = menu.icon,
-                            label = menu.label,
-                            tint = menu.tint,
-                            onClick = { navController.navigate(menu.route) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.History,
+                        value = statsPending,
+                        label = "Pending",
+                        iconTint = WarningOrange,
+                        valueColor = WarningOrange
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.CheckCircle,
+                        value = statsApproved,
+                        label = "Disetujui",
+                        iconTint = SuccessGreen,
+                        valueColor = SuccessGreen
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Inventory,
+                        value = statsItems,
+                        label = "Barang",
+                        iconTint = PrimaryBlue,
+                        valueColor = PrimaryBlue
+                    )
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(
-                color = Primary.copy(alpha = 0.15f),
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Menu Petugas",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                menus.chunked(3).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        row.forEach { menu ->
+                            MenuGridItem(
+                                icon = menu.icon,
+                                label = menu.label,
+                                tint = menu.tint,
+                                onClick = { navController.navigate(menu.route) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider(
+                    color = PrimaryBlue.copy(alpha = 0.15f),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 }

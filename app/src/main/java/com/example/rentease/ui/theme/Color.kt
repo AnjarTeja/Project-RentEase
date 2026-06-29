@@ -2,24 +2,35 @@ package com.example.rentease.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Primary = Color(0xFF00D9FF)
-val PrimaryDark = Color(0xFF007A99)
-val PrimaryLight = Color(0xFF4DFFFF)
-val PrimaryAccent = Color(0xFF1A1A2E)
+val PrimaryBlue = Color(0xFF1565C0)
+val BlueDark = Color(0xFF0D47A1)
+val BlueLight = Color(0xFFE3F2FD)
+val BlueAccent = Color(0xFF42A5F5)
+val BlueSoftBg = Color(0xFFF5F8FF)
 
-val TechDarkBg = Color(0xFF0F0F1E)
-val TechCardBg = Color(0xFF1A1A2E)
-val TechSurface = Color(0xFF262641)
-val TechNavy = Color(0xFF16213E)
+val White = Color(0xFFFFFFFF)
+val SurfaceGray = Color(0xFFF5F5F5)
 
-val TextDark = Color(0xFFFFFFFF)
-val TextLight = Color(0xFFB0B0C0)
-val TextHint = Color(0xFF808090)
-val TextSecondary = Color(0xFF999AAA)
+val TextPrimary = Color(0xFF212121)
+val TextSecondary = Color(0xFF757575)
+val TextHint = Color(0xFFBDBDBD)
 
-val SuccessColor = Color(0xFF00FF88)
-val ErrorColor = Color(0xFFFF4466)
-val WarningColor = Color(0xFFFFAA00)
-val PurpleAccent = Color(0xFFBB66FF)
-val DividerColor = Color(0xFF2A2A4A)
-val CardPressed = Color(0xFF252545)
+val SuccessGreen = Color(0xFF2E7D32)
+val ErrorRed = Color(0xFFC62828)
+val WarningOrange = Color(0xFFEF6C00)
+val PurpleAccent = Color(0xFF7B1FA2)
+val DividerColor = Color(0xFFE0E0E0)
+val CardPressed = Color(0xFFF5F5F5)
+
+val Primary = PrimaryBlue
+val PrimaryDark = BlueDark
+val PrimaryLight = BlueLight
+val TechDarkBg = White
+val TechCardBg = White
+val TechSurface = SurfaceGray
+val TechNavy = BlueDark
+val TextDark = TextPrimary
+val TextLight = TextSecondary
+val SuccessColor = SuccessGreen
+val ErrorColor = ErrorRed
+val WarningColor = WarningOrange

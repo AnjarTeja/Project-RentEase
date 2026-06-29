@@ -7,29 +7,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import com.example.rentease.ui.theme.TechDarkBg
+import com.example.rentease.ui.theme.BlueLight
+import com.example.rentease.ui.theme.White
 
-val GalaxyGradient = Brush.verticalGradient(
+val ModernGradient = Brush.verticalGradient(
     colors = listOf(
-        Color(0xFF0B0B1A),
-        Color(0xFF0F0F2E),
-        Color(0xFF1A1A3E),
-        TechDarkBg
+        White,
+        BlueLight.copy(alpha = 0.5f)
     )
 )
 
 @Composable
 fun GalaxyBackground(
     modifier: Modifier = Modifier,
-    starAlpha: Float = 0.3f,
+    starAlpha: Float = 0.0f,
     content: @Composable () -> Unit
 ) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(GalaxyGradient)
+            .background(ModernGradient)
     ) {
-        StarFieldOverlay(alpha = starAlpha)
         content()
     }
 }

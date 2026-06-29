@@ -40,15 +40,18 @@ import androidx.navigation.NavHostController
 import com.example.rentease.Chat
 import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.ui.components.AppToolbar
-import com.example.rentease.ui.components.GalaxyBackground
-import com.example.rentease.ui.components.GlowCard
+import com.example.rentease.ui.components.BottomNavTab
+import com.example.rentease.ui.components.GlassCard
+import com.example.rentease.ui.components.UserBottomNavBar
 import com.example.rentease.ui.navigation.Screen
-import com.example.rentease.ui.theme.ErrorColor
-import com.example.rentease.ui.theme.Primary
-import com.example.rentease.ui.theme.TechCardBg
-import com.example.rentease.ui.theme.TextDark
+import com.example.rentease.ui.theme.BlueLight
+import com.example.rentease.ui.theme.BlueSoftBg
+import com.example.rentease.ui.theme.ErrorRed
+import com.example.rentease.ui.theme.PrimaryBlue
 import com.example.rentease.ui.theme.TextHint
-import com.example.rentease.ui.theme.TextLight
+import com.example.rentease.ui.theme.TextPrimary
+import com.example.rentease.ui.theme.TextSecondary
+import com.example.rentease.ui.theme.White
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -81,6 +84,8 @@ fun ChatListScreen(
                 roleLoaded = true
             }
     }
+
+    val isBottomNavTab = onBack == {}
 
     DisposableEffect(roleLoaded) {
         if (!roleLoaded) return@DisposableEffect onDispose {}
@@ -186,25 +191,46 @@ fun ChatListScreen(
         }
     }
 
-    GalaxyBackground(starAlpha = 0.3f) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BlueSoftBg)
+    ) {
+        if (!isBottomNavTab) {
             AppToolbar(title = "Chat", onBackClick = onBack)
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PrimaryBlue)
+            ) {
+                Text(
+                    text = "Chat",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = White,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .padding(start = 20.dp, top = 14.dp, bottom = 14.dp)
+                )
+            }
+        }
 
+        Column(modifier = Modifier.weight(1f)) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 when {
                     isLoading -> {
-                        CircularProgressIndicator(color = Primary, strokeWidth = 3.dp)
+                        CircularProgressIndicator(color = PrimaryBlue, strokeWidth = 3.dp)
                     }
                     errorMessage != null -> {
                         Text(
                             errorMessage!!,
-                            color = ErrorColor,
+                            color = ErrorRed,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(24.dp)
                         )
                     }
                     chatList.isEmpty() -> {
-                        Text("Belum ada chat", color = TextLight)
+                        Text("Belum ada chat", color = TextSecondary)
                     }
                     else -> {
                         LazyColumn(
@@ -220,12 +246,13 @@ fun ChatListScreen(
                                     else -> chat.renterName
                                 }
 
-                                GlowCard(
+                                GlassCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
                                             navController.navigate(Screen.Chat.createRoute(chat.id))
-                                        }
+                                        },
+                                    radius = 12.dp
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(12.dp),
@@ -235,13 +262,13 @@ fun ChatListScreen(
                                             modifier = Modifier
                                                 .size(44.dp)
                                                 .clip(CircleShape)
-                                                .background(TechCardBg),
+                                                .background(BlueLight),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
                                                 Icons.AutoMirrored.Filled.Chat,
                                                 contentDescription = null,
-                                                tint = Primary,
+                                                tint = PrimaryBlue,
                                                 modifier = Modifier.size(22.dp)
                                             )
                                         }
@@ -255,7 +282,7 @@ fun ChatListScreen(
                                                 Text(
                                                     text = contactName,
                                                     style = MaterialTheme.typography.titleSmall,
-                                                    color = TextDark,
+                                                    color = TextPrimary,
                                                     fontWeight = FontWeight.Medium,
                                                     modifier = Modifier.weight(1f)
                                                 )
@@ -270,13 +297,13 @@ fun ChatListScreen(
                                             Text(
                                                 text = chat.itemName,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = Primary
+                                                color = PrimaryBlue
                                             )
                                             if (chat.lastMessage.isNotEmpty()) {
                                                 Text(
                                                     text = chat.lastMessage,
                                                     style = MaterialTheme.typography.bodySmall,
-                                                    color = TextLight,
+                                                    color = TextSecondary,
                                                     maxLines = 1
                                                 )
                                             }
@@ -288,6 +315,25 @@ fun ChatListScreen(
                     }
                 }
             }
+        }
+
+        if (isBottomNavTab) {
+            UserBottomNavBar(
+                selectedTab = BottomNavTab.CHAT,
+                onTabSelected = { tab ->
+                    when (tab) {
+                        BottomNavTab.HOME -> navController.navigate(Screen.DashboardUser.route) {
+                            popUpTo(Screen.DashboardUser.route) { saveState = true }
+                            launchSingleTop = true; restoreState = true
+                        }
+                        BottomNavTab.CHAT -> {}
+                        BottomNavTab.PROFILE -> navController.navigate(Screen.ProfileUser.route) {
+                            popUpTo(Screen.DashboardUser.route) { saveState = true }
+                            launchSingleTop = true; restoreState = true
+                        }
+                    }
+                }
+            )
         }
     }
 }
