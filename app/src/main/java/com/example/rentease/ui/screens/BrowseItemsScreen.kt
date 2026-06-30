@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -123,6 +124,9 @@ fun BrowseItemsScreen(
                 }
                 val items = mutableListOf<Item>()
                 for (doc in snapshot ?: emptyList()) {
+                    val status = doc.getString("status") ?: ""
+                    val approval = doc.getString("approvalStatus") ?: ""
+                    if (status != Item.STATUS_AVAILABLE || approval != Item.APPROVAL_APPROVED) continue
                     items.add(
                         Item(
                             id = doc.id,
@@ -130,10 +134,10 @@ fun BrowseItemsScreen(
                             description = doc.getString("description") ?: "",
                             price = doc.getDouble("price") ?: 0.0,
                             ownerId = doc.getString("ownerId") ?: "",
-                            status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
+                            status = status,
                             imageUrl = doc.getString("imageUrl") ?: "",
                             createdAt = doc.getLong("createdAt") ?: 0L,
-                            approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
+                            approvalStatus = approval,
                             rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
                             stock = (doc.getLong("stock") ?: 1L).toInt(),
                             category = doc.getString("category") ?: Item.CATEGORY_CAMERA
@@ -344,13 +348,30 @@ private fun BrowseItemCard(item: Item, onClick: () -> Unit) {
             modifier = Modifier.clickable { onClick() }.padding(8.dp)
         ) {
             Box {
-                val imageModel = remember(item.imageUrl) { ImageUploadHelper.imageModelFromUrl(item.imageUrl) }
-                AsyncImage(
-                    model = imageModel,
-                    contentDescription = item.name,
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
-                    contentScale = ContentScale.Crop
-                )
+                if (item.imageUrl.isNotBlank()) {
+                    val imageModel = remember(item.imageUrl) { ImageUploadHelper.imageModelFromUrl(item.imageUrl) }
+                    AsyncImage(
+                        model = imageModel,
+                        contentDescription = item.name,
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .background(Primary.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Inventory,
+                            contentDescription = null,
+                            tint = TextHint.copy(alpha = 0.4f),
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
+                }
                 val (label, color) = statusLabel()
                 Box(
                     modifier = Modifier
@@ -361,29 +382,6 @@ private fun BrowseItemCard(item: Item, onClick: () -> Unit) {
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(label, color = TechCardBg, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-                if (item.approvalStatus == Item.APPROVAL_PENDING) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(PurpleAccent.copy(alpha = 0.85f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text("Pending", color = TechCardBg, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-                } else if (item.approvalStatus == Item.APPROVAL_REJECTED) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(ErrorColor.copy(alpha = 0.85f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text("Ditolak", color = TechCardBg, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))

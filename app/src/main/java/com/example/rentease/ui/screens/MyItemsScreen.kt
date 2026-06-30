@@ -1,6 +1,8 @@
 package com.example.rentease.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,14 +12,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -28,7 +33,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +75,7 @@ fun MyItemsScreen(
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
     val authManager = remember { FirebaseAuthManager() }
+    val context = androidx.compose.ui.platform.LocalContext.current
     val allItems = remember { mutableStateListOf<Item>() }
     val filteredItems = remember { mutableStateListOf<Item>() }
     var isLoading by remember { mutableStateOf(true) }
@@ -77,42 +83,39 @@ fun MyItemsScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var deleteTarget by remember { mutableStateOf<Item?>(null) }
 
-    fun loadItems() {
-        val uid = authManager.getCurrentUserUID() ?: return
-        isLoading = true
-        db.collection("items")
-            .whereEqualTo("ownerId", uid)
-            .get()
-            .addOnSuccessListener { docs ->
-                val items = docs.mapNotNull { doc ->
-                    try {
-                        Item(
-                            id = doc.id,
-                            name = doc.getString("name") ?: "",
-                            description = doc.getString("description") ?: "",
-                            price = doc.getDouble("price") ?: 0.0,
-                            ownerId = doc.getString("ownerId") ?: "",
-                            status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
-                            imageUrl = doc.getString("imageUrl") ?: "",
-                            createdAt = doc.getLong("createdAt") ?: 0L,
-                            approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
-                            rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
-                            stock = (doc.getLong("stock") ?: 1L).toInt(),
-                            category = doc.getString("category") ?: Item.CATEGORY_CAMERA
-                        )
-                    } catch (e: Exception) { null }
-                }.sortedByDescending { it.createdAt }
-                allItems.clear()
-                allItems.addAll(items)
-                filteredItems.clear()
-                filteredItems.addAll(items)
-                isLoading = false
-            }
-            .addOnFailureListener { isLoading = false }
-    }
-
-    LaunchedEffect(Unit) {
-        loadItems()
+    DisposableEffect(Unit) {
+        val uid = authManager.getCurrentUserUID()
+        val listener = if (uid != null) {
+            db.collection("items")
+                .whereEqualTo("ownerId", uid)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) { isLoading = false; return@addSnapshotListener }
+                    val items = (snapshot?.documents ?: emptyList()).mapNotNull { doc ->
+                        try {
+                            Item(
+                                id = doc.id,
+                                name = doc.getString("name") ?: "",
+                                description = doc.getString("description") ?: "",
+                                price = doc.getDouble("price") ?: 0.0,
+                                ownerId = doc.getString("ownerId") ?: "",
+                                status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
+                                imageUrl = doc.getString("imageUrl") ?: "",
+                                createdAt = doc.getLong("createdAt") ?: 0L,
+                                approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
+                                rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
+                                stock = (doc.getLong("stock") ?: 1L).toInt(),
+                                category = doc.getString("category") ?: Item.CATEGORY_CAMERA
+                            )
+                        } catch (_: Exception) { null }
+                    }.sortedByDescending { it.createdAt }
+                    allItems.clear()
+                    allItems.addAll(items)
+                    filteredItems.clear()
+                    filteredItems.addAll(items)
+                    isLoading = false
+                }
+        } else null
+        onDispose { listener?.remove() }
     }
 
     fun applySearch(query: String, category: String? = selectedCategory) {
@@ -139,9 +142,10 @@ fun MyItemsScreen(
                 }
                 if (hasActiveRental) {
                     deleteTarget = null
+                    Toast.makeText(context, "Tidak bisa dihapus — masih ada transaksi aktif", Toast.LENGTH_SHORT).show()
                 } else {
                     db.collection("items").document(item.id).delete()
-                        .addOnSuccessListener { deleteTarget = null; loadItems() }
+                        .addOnSuccessListener { deleteTarget = null }
                 }
             }
             .addOnFailureListener { deleteTarget = null }
@@ -164,6 +168,13 @@ fun MyItemsScreen(
                 onValueChange = { applySearch(it) },
                 placeholder = { Text("Cari barang...", color = TextHint) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextHint) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { applySearch("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = TextHint)
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
@@ -206,18 +217,40 @@ fun MyItemsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredItems) { item ->
-                        GlassCard(modifier = Modifier.fillMaxWidth(), radius = 12.dp) {
+                        GlassCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate(Screen.ItemDetail.createRoute(item.id)) },
+                            radius = 12.dp
+                        ) {
                             Row(modifier = Modifier.padding(8.dp)) {
-                                val imageModel = remember(item.imageUrl) { ImageUploadHelper.imageModelFromUrl(item.imageUrl) }
-                                AsyncImage(
-                                    model = imageModel,
-                                    contentDescription = item.name,
-                                    modifier = Modifier
-                                        .width(80.dp).height(80.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(TechCardBg),
-                                    contentScale = ContentScale.Crop
-                                )
+                                if (item.imageUrl.isNotBlank()) {
+                                    val imageModel = remember(item.imageUrl) { ImageUploadHelper.imageModelFromUrl(item.imageUrl) }
+                                    AsyncImage(
+                                        model = imageModel,
+                                        contentDescription = item.name,
+                                        modifier = Modifier
+                                            .width(80.dp).height(80.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(TechCardBg),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(80.dp).height(80.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Primary.copy(alpha = 0.1f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Inventory,
+                                            contentDescription = null,
+                                            tint = TextHint.copy(alpha = 0.4f),
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = item.name, style = MaterialTheme.typography.titleSmall, color = TextDark)
@@ -242,6 +275,9 @@ fun MyItemsScreen(
                                         if (item.approvalStatus == Item.APPROVAL_PENDING) {
                                             Spacer(modifier = Modifier.width(4.dp))
                                             RoleBadge(role = "Pending", textColor = PurpleAccent)
+                                        } else if (item.approvalStatus == Item.APPROVAL_REJECTED) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            RoleBadge(role = "Ditolak", textColor = ErrorColor)
                                         }
                                     }
                                 }

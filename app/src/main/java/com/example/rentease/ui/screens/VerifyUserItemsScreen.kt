@@ -59,6 +59,7 @@ import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.collections.mutableMapOf
 
 @Composable
 fun VerifyUserItemsScreen(
@@ -75,6 +76,7 @@ fun VerifyUserItemsScreen(
     var itemToAct by remember { mutableStateOf<Item?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
     var accessError by remember { mutableStateOf<String?>(null) }
+    var ownerNames by remember { mutableStateOf(mapOf<String, String>()) }
 
     LaunchedEffect(Unit) {
         val authManager = FirebaseAuthManager()
@@ -90,6 +92,20 @@ fun VerifyUserItemsScreen(
 
     val pendingItems = allItems.filter { it.approvalStatus == Item.APPROVAL_PENDING }
 
+    fun fetchOwnerName(ownerId: String, onResult: (String) -> Unit) {
+        if (ownerNames.containsKey(ownerId)) {
+            onResult(ownerNames[ownerId] ?: ownerId.take(8))
+            return
+        }
+        db.collection("users").document(ownerId).get()
+            .addOnSuccessListener { doc ->
+                val name = doc.getString("name") ?: ownerId.take(8)
+                ownerNames = ownerNames + (ownerId to name)
+                onResult(name)
+            }
+            .addOnFailureListener { onResult(ownerId.take(8)) }
+    }
+
     DisposableEffect(Unit) {
         val listener = db.collection("items")
             .orderBy("createdAt", Query.Direction.DESCENDING)
@@ -104,6 +120,7 @@ fun VerifyUserItemsScreen(
                                 }.sortedByDescending { it.createdAt }
                                 isLoading = false
                                 errorMessage = null
+                                allItems.forEach { fetchOwnerName(it.ownerId) {} }
                             }
                             .addOnFailureListener {
                                 errorMessage = "Gagal memuat data pengajuan"
@@ -122,6 +139,7 @@ fun VerifyUserItemsScreen(
                     }
                     isLoading = false
                     errorMessage = null
+                    allItems.forEach { fetchOwnerName(it.ownerId) {} }
                 }
             }
         onDispose { listener.remove() }
@@ -144,7 +162,7 @@ fun VerifyUserItemsScreen(
         val item = itemToAct ?: return
         isProcessing = true
         db.collection("items").document(item.id)
-            .delete()
+            .update("approvalStatus", Item.APPROVAL_REJECTED)
             .addOnSuccessListener {
                 isProcessing = false
                 showRejectDialog = false
@@ -246,8 +264,9 @@ fun VerifyUserItemsScreen(
                                                 modifier = Modifier.size(14.dp)
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
+                                            val ownerName = ownerNames[item.ownerId] ?: "Memuat..."
                                             Text(
-                                                text = item.ownerId.take(8) + "..." ,
+                                                text = ownerName,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = TextLight
                                             )
@@ -380,7 +399,7 @@ fun VerifyUserItemsScreen(
             title = { Text("Tolak Barang", color = TextDark) },
             text = {
                 Text(
-                    "Apakah Anda yakin ingin menolak pengajuan barang '${itemToAct!!.name}'? Data barang akan dihapus dari sistem pengajuan.",
+                    "Apakah Anda yakin ingin menolak pengajuan barang '${itemToAct!!.name}'? Barang akan ditandai sebagai ditolak dan tidak muncul di katalog publik.",
                     color = TextLight
                 )
             },

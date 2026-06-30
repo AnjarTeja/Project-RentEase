@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -285,7 +286,8 @@ fun GlowButton(
     enabled: Boolean = true,
     backgroundColor: Color = PrimaryBlue,
     textColor: Color = White,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    isLoading: Boolean = false
 ) {
     Button(
         onClick = onClick,
@@ -300,20 +302,28 @@ fun GlowButton(
         ),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
     ) {
-        if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = textColor,
-                modifier = Modifier.size(20.dp)
+        if (isLoading) {
+            CircularProgressIndicator(
+                color = textColor,
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp
             )
-            Spacer(modifier = Modifier.width(8.dp))
+        } else {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium,
+                color = textColor
+            )
         }
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            color = textColor
-        )
     }
 }
 

@@ -46,6 +46,7 @@ import com.example.rentease.ui.components.AppToolbar
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
 import com.example.rentease.ui.components.GlowCard
+import com.example.rentease.ui.navigation.Screen
 import com.example.rentease.ui.theme.ErrorColor
 import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.SuccessColor
@@ -213,7 +214,7 @@ fun CustomerServiceScreen(
                                 }
                                 GlowCard(
                                     modifier = Modifier.fillMaxWidth().clickable {
-                                        navController.navigate("ticket_detail/${ticket.id}")
+                                        navController.navigate(Screen.TicketDetail.createRoute(ticket.id))
                                     },
                                     radius = 12.dp
                                 ) {

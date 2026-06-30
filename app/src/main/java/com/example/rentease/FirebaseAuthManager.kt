@@ -14,11 +14,11 @@ class FirebaseAuthManager {
         const val ROLE_USER = "user"
         const val ROLE_PETUGAS = "petugas"
         const val ROLE_ADMIN = "admin"
-    }
 
-    // In-memory cache for user role to reduce Firestore queries
-    private var cachedUserRole: String? = null
-    private var lastCachedUid: String? = null
+        // Shared cache across all instances
+        private var cachedUserRole: String? = null
+        private var lastCachedUid: String? = null
+    }
 
     // Check if user is logged in
     fun isUserLoggedIn(): Boolean {
@@ -33,6 +33,15 @@ class FirebaseAuthManager {
     // Get current user UID
     fun getCurrentUserUID(): String? {
         return firebaseAuth.currentUser?.uid
+    }
+
+    // Get cached user role synchronously (returns null if not yet loaded)
+    fun getCachedUserRole(): String? {
+        val uid = firebaseAuth.currentUser?.uid
+        if (uid != null && lastCachedUid == uid) {
+            return cachedUserRole
+        }
+        return null
     }
 
     // Register new user (only for user role)
@@ -61,10 +70,14 @@ class FirebaseAuthManager {
                         .set(userData, SetOptions.merge())
                         .addOnSuccessListener {
                             Log.d(TAG, "User registered successfully with role: $ROLE_USER")
+                            firebaseAuth.signOut()
+                            clearCache()
                             onSuccess()
                         }
                         .addOnFailureListener { exception ->
                             Log.d(TAG, "Failed to save user data: ${exception.message}")
+                            firebaseAuth.signOut()
+                            clearCache()
                             onFailure("Gagal menyimpan data pengguna: ${exception.message}")
                         }
                 } else {

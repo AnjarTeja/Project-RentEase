@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,12 +27,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.google.firebase.firestore.ListenerRegistration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,37 +105,41 @@ fun AllItemsScreen(
         filteredItems.addAll(result)
     }
 
-    LaunchedEffect(Unit) {
-        db.collection("items")
-            .get()
-            .addOnSuccessListener { docs ->
-                val items = docs.mapNotNull { doc ->
-                    if (doc.exists()) {
-                        Item(
-                            id = doc.id,
-                            name = doc.getString("name") ?: "",
-                            description = doc.getString("description") ?: "",
-                            price = doc.getDouble("price") ?: 0.0,
-                            ownerId = doc.getString("ownerId") ?: "",
-                            status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
-                            imageUrl = doc.getString("imageUrl") ?: "",
-                            createdAt = doc.getLong("createdAt") ?: 0L,
-                            approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
-                            rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
-                            stock = (doc.getLong("stock") ?: 1L).toInt(),
-                            category = doc.getString("category") ?: Item.CATEGORY_CAMERA
-                        )
-                    } else null
+    DisposableEffect(Unit) {
+        val listener = db.collection("items")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    isLoading = false
+                    errorMessage = "Gagal memuat barang: ${error.message}"
+                    return@addSnapshotListener
                 }
-                allItems.clear()
-                allItems.addAll(items.sortedByDescending { it.createdAt })
-                isLoading = false
-                applyFilter()
+                if (snapshot != null) {
+                    val items = snapshot.documents.mapNotNull { doc ->
+                        if (doc.exists()) {
+                            Item(
+                                id = doc.id,
+                                name = doc.getString("name") ?: "",
+                                description = doc.getString("description") ?: "",
+                                price = doc.getDouble("price") ?: 0.0,
+                                ownerId = doc.getString("ownerId") ?: "",
+                                status = doc.getString("status") ?: Item.STATUS_AVAILABLE,
+                                imageUrl = doc.getString("imageUrl") ?: "",
+                                createdAt = doc.getLong("createdAt") ?: 0L,
+                                approvalStatus = doc.getString("approvalStatus") ?: Item.APPROVAL_APPROVED,
+                                rentCount = (doc.getLong("rentCount") ?: 0L).toInt(),
+                                stock = (doc.getLong("stock") ?: 1L).toInt(),
+                                category = doc.getString("category") ?: Item.CATEGORY_CAMERA
+                            )
+                        } else null
+                    }.sortedByDescending { it.createdAt }
+                    allItems.clear()
+                    allItems.addAll(items)
+                    isLoading = false
+                    errorMessage = ""
+                    applyFilter()
+                }
             }
-            .addOnFailureListener { e ->
-                isLoading = false
-                errorMessage = "Gagal memuat barang: ${e.message}"
-            }
+        onDispose { listener.remove() }
     }
 
     if (accessError != null) {
@@ -229,19 +236,33 @@ private fun AllItemCard(item: Item, onClick: () -> Unit) {
             modifier = Modifier.padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val imageModel = remember(item.imageUrl) {
-                if (item.imageUrl.isBlank()) null
-                else ImageUploadHelper.imageModelFromUrl(item.imageUrl)
+            if (item.imageUrl.isNotBlank()) {
+                val imageModel = remember(item.imageUrl) { ImageUploadHelper.imageModelFromUrl(item.imageUrl) }
+                AsyncImage(
+                    model = imageModel,
+                    contentDescription = item.name,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Primary.copy(alpha = 0.1f)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Inventory,
+                        contentDescription = null,
+                        tint = TextHint.copy(alpha = 0.4f),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
-            AsyncImage(
-                model = imageModel,
-                contentDescription = item.name,
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Primary.copy(alpha = 0.1f)),
-                contentScale = ContentScale.Crop
-            )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(

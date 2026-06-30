@@ -416,7 +416,15 @@ fun ManageItemsScreen(
                     onClick = { deleteItem() },
                     enabled = !isDeleting
                 ) {
-                    Text(if (isDeleting) "Menghapus..." else "Ya, Hapus", color = ErrorColor)
+                    if (isDeleting) {
+                        CircularProgressIndicator(
+                            color = ErrorColor,
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Ya, Hapus", color = ErrorColor)
+                    }
                 }
             },
             dismissButton = {

@@ -114,6 +114,7 @@ fun ViewReportsScreen(
     ) { uri: Uri? ->
         if (uri != null) {
             generateAndSavePdf(
+                context = context,
                 uri = uri,
                 reports = reports,
                 category = reportTypes[selectedType],
@@ -346,7 +347,7 @@ fun ViewReportsScreen(
                             createDocumentLauncher.launch(fileName)
                         }
                     }) {
-                        Icon(Icons.Default.FileDownload, contentDescription = "Export PDF", tint = Primary)
+                        Icon(Icons.Default.FileDownload, contentDescription = "Export PDF", tint = com.example.rentease.ui.theme.White)
                     }
                 }
             )
@@ -547,6 +548,7 @@ fun ViewReportsScreen(
 }
 
 private fun generateAndSavePdf(
+    context: android.content.Context,
     uri: Uri,
     reports: List<ReportItem>,
     category: String,
@@ -563,162 +565,238 @@ private fun generateAndSavePdf(
     val pdfDocument = android.graphics.pdf.PdfDocument()
     val pageW = 595f
     val pageH = 842f
-    val margin = 50f
+    val margin = 48f
     val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(pageW.toInt(), pageH.toInt(), 1).create()
     var pageNumber = 1
     var currentPage = pdfDocument.startPage(pageInfo)
     var canvas = currentPage.canvas
     var yPos = margin
 
-    val primaryColor = android.graphics.Color.rgb(0, 100, 200)
-    val darkBg = android.graphics.Color.rgb(30, 30, 60)
-    val lightGray = android.graphics.Color.rgb(245, 245, 250)
+    val primaryBlue = android.graphics.Color.rgb(21, 101, 192)
+    val primaryDark = android.graphics.Color.rgb(13, 71, 161)
+    val accentColor = android.graphics.Color.rgb(0, 200, 180)
+    val darkBg = android.graphics.Color.rgb(25, 35, 55)
+    val lightBg = android.graphics.Color.rgb(245, 247, 250)
     val white = android.graphics.Color.WHITE
-    val black = android.graphics.Color.BLACK
-    val darkGray = android.graphics.Color.DKGRAY
+    val black = android.graphics.Color.rgb(40, 40, 50)
+    val darkGray = android.graphics.Color.rgb(100, 110, 125)
+    val mediumGray = android.graphics.Color.rgb(180, 190, 200)
+    val evenRowBg = android.graphics.Color.rgb(240, 244, 250)
+    val statBoxBg = android.graphics.Color.rgb(235, 240, 250)
+    val headerBg = android.graphics.Color.rgb(25, 45, 80)
 
-    val titleFont = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-    val regularFont = android.graphics.Typeface.DEFAULT
+    val boldTypeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+    val regularTypeface = android.graphics.Typeface.DEFAULT
 
-    val bigTitlePaint = android.graphics.Paint().apply {
-        textSize = 26f; typeface = titleFont; color = darkBg
+    val logoTextPaint = android.graphics.Paint().apply {
+        textSize = 22f; typeface = boldTypeface; color = primaryDark; isAntiAlias = true
+        letterSpacing = 0.15f
     }
-    val subTitlePaint = android.graphics.Paint().apply {
-        textSize = 11f; typeface = regularFont; color = darkGray
+    val logoSubPaint = android.graphics.Paint().apply {
+        textSize = 8f; typeface = regularTypeface; color = darkGray; isAntiAlias = true
+        letterSpacing = 0.05f
     }
-    val sectionPaint = android.graphics.Paint().apply {
-        textSize = 14f; typeface = titleFont; color = primaryColor
+    val headerAccentPaint = android.graphics.Paint().apply {
+        textSize = 9f; typeface = boldTypeface; color = accentColor; isAntiAlias = true
     }
-    val headerCellPaint = android.graphics.Paint().apply {
-        textSize = 10f; typeface = titleFont; color = white; isAntiAlias = true
-    }
-    val cellPaint = android.graphics.Paint().apply {
-        textSize = 10f; typeface = regularFont; color = black; isAntiAlias = true
-    }
-    val lightCellPaint = android.graphics.Paint().apply {
-        textSize = 9f; typeface = regularFont; color = darkGray; isAntiAlias = true
-    }
-    val statValPaint = android.graphics.Paint().apply {
-        textSize = 22f; typeface = titleFont; color = primaryColor; isAntiAlias = true
-    }
-    val statLabelPaint = android.graphics.Paint().apply {
-        textSize = 9f; typeface = regularFont; color = darkGray; isAntiAlias = true
-    }
-    val pageNumPaint = android.graphics.Paint().apply {
-        textSize = 9f; typeface = regularFont; color = darkGray; textAlign = android.graphics.Paint.Align.CENTER
+    val sectionTitlePaint = android.graphics.Paint().apply {
+        textSize = 12f; typeface = boldTypeface; color = primaryDark; isAntiAlias = true
     }
     val infoLabelPaint = android.graphics.Paint().apply {
-        textSize = 11f; typeface = titleFont; color = darkBg; isAntiAlias = true
+        textSize = 10f; typeface = boldTypeface; color = darkBg; isAntiAlias = true
     }
     val infoValuePaint = android.graphics.Paint().apply {
-        textSize = 11f; typeface = regularFont; color = darkGray; isAntiAlias = true
+        textSize = 10f; typeface = regularTypeface; color = darkGray; isAntiAlias = true
+    }
+    val statLabelPaint = android.graphics.Paint().apply {
+        textSize = 8f; typeface = regularTypeface; color = darkGray; isAntiAlias = true
+    }
+    val cellPaint = android.graphics.Paint().apply {
+        textSize = 9f; typeface = regularTypeface; color = black; isAntiAlias = true
+    }
+    val lightCellPaint = android.graphics.Paint().apply {
+        textSize = 8.5f; typeface = regularTypeface; color = darkGray; isAntiAlias = true
+    }
+    val watermarkPaint = android.graphics.Paint().apply {
+        textSize = 48f; typeface = boldTypeface; color = android.graphics.Color.argb(20, 21, 101, 192); isAntiAlias = true
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+
+    val thinLinePaint = android.graphics.Paint().apply { color = primaryBlue; strokeWidth = 1.5f }
+    val lightLinePaint = android.graphics.Paint().apply { color = mediumGray; strokeWidth = 0.5f }
+
+    val logoBitmap = try {
+        android.graphics.BitmapFactory.decodeResource(context.resources, com.example.rentease.R.drawable.logo_aplikasi)
+    } catch (e: Exception) { null }
+
+    fun drawTopBar() {
+        val barPaint = android.graphics.Paint().apply { color = primaryBlue }
+        val barPaint2 = android.graphics.Paint().apply { color = primaryDark }
+        canvas.drawRect(0f, 0f, pageW, 5f, barPaint)
+        canvas.drawRect(0f, 5f, pageW, 7f, barPaint2)
     }
 
     fun drawHeader() {
-        // Brand bar
-        val barPaint = android.graphics.Paint().apply { color = primaryColor }
-        canvas.drawRect(0f, 0f, pageW, 6f, barPaint)
+        yPos = margin + 4f
 
-        // Title
-        yPos = margin
-        canvas.drawText("RENTEASE", margin, yPos + 20f, bigTitlePaint)
+        // Logo image
+        val logoSize = 44f
+        val logoY = yPos
+        if (logoBitmap != null) {
+            val scaledLogo = android.graphics.Bitmap.createScaledBitmap(logoBitmap, logoSize.toInt(), logoSize.toInt(), true)
+            canvas.drawBitmap(scaledLogo, margin, logoY, null)
+        } else {
+            val logoBg = android.graphics.Paint().apply { color = primaryBlue }
+            canvas.drawRoundRect(margin, logoY, margin + logoSize, logoY + logoSize, 8f, 8f, logoBg)
+            val fallbackPaint = android.graphics.Paint().apply {
+                textSize = 22f; typeface = boldTypeface; color = white; isAntiAlias = true
+                textAlign = android.graphics.Paint.Align.CENTER
+            }
+            canvas.drawText("RE", margin + 22f, logoY + 30f, fallbackPaint)
+        }
 
-        // Divider below title
-        val dividerPaint = android.graphics.Paint().apply { color = primaryColor; strokeWidth = 2f }
-        canvas.drawLine(margin, yPos + 30f, pageW - margin, yPos + 30f, dividerPaint)
-        yPos += 48f
+        canvas.drawText("RentEase", margin + logoSize + 12f, yPos + 18f, logoTextPaint)
+        canvas.drawText("SISTEM INFORMASI RENTAL", margin + logoSize + 12f, yPos + 32f, logoSubPaint)
+        canvas.drawText("LAPORAN RESMI", margin + logoSize + 12f, yPos + 42f, headerAccentPaint)
 
-        // Info block - two columns
-        val col1X = margin
-        val col2X = pageW / 2f + 10f
+        // Date right-aligned
+        val todayStr = SimpleDateFormat("dd MMMM yyyy", Locale("id", "ID")).format(Date())
+        val rightDatePaint = android.graphics.Paint().apply {
+            textSize = 9f; typeface = regularTypeface; color = darkGray; isAntiAlias = true
+            textAlign = android.graphics.Paint.Align.RIGHT
+        }
+        canvas.drawText(todayStr, pageW - margin, yPos + 18f, rightDatePaint)
 
-        canvas.drawText("Jenis Laporan", col1X, yPos, infoLabelPaint)
-        canvas.drawText(":  $category", col1X + 100f, yPos, infoValuePaint)
-        canvas.drawText("Periode", col2X, yPos, infoLabelPaint)
-        canvas.drawText(":  $period", col2X + 70f, yPos, infoValuePaint)
-        yPos += 18f
+        yPos += 56f
 
-        canvas.drawText("Waktu Cetak", col1X, yPos, infoLabelPaint)
-        canvas.drawText(":  ${dateFormat.format(Date())}", col1X + 100f, yPos, infoValuePaint)
-        canvas.drawText("Jumlah Data", col2X, yPos, infoLabelPaint)
-        canvas.drawText(":  ${reports.size} record", col2X + 70f, yPos, infoValuePaint)
-        yPos += 30f
+        // Watermark
+        canvas.drawText("LAPORAN", pageW / 2f, pageH / 2f - 40f, watermarkPaint)
+
+        // Info card
+        val infoCardY = yPos
+        val cardPaint = android.graphics.Paint().apply { color = lightBg; isAntiAlias = true }
+        val cardBorderPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.rgb(215, 225, 240)
+            style = android.graphics.Paint.Style.STROKE; strokeWidth = 0.8f; isAntiAlias = true
+        }
+        canvas.drawRoundRect(margin, infoCardY, pageW - margin, infoCardY + 56f, 6f, 6f, cardPaint)
+        canvas.drawRoundRect(margin, infoCardY, pageW - margin, infoCardY + 56f, 6f, 6f, cardBorderPaint)
+
+        val leftAccent = android.graphics.Paint().apply { color = primaryBlue }
+        canvas.drawRect(margin, infoCardY, margin + 4f, infoCardY + 56f, leftAccent)
+
+        val col1X = margin + 16f
+        val col2X = pageW / 2f + 8f
+
+        canvas.drawText("Jenis Laporan", col1X, infoCardY + 20f, infoLabelPaint)
+        canvas.drawText(":  $category", col1X + 110f, infoCardY + 20f, infoValuePaint)
+        canvas.drawText("Periode", col2X, infoCardY + 20f, infoLabelPaint)
+        canvas.drawText(":  $period", col2X + 65f, infoCardY + 20f, infoValuePaint)
+
+        canvas.drawText("Waktu Cetak", col1X, infoCardY + 40f, infoLabelPaint)
+        canvas.drawText(":  ${SimpleDateFormat("EEEE, dd MMM yyyy HH:mm", Locale("id", "ID")).format(Date())}", col1X + 110f, infoCardY + 40f, infoValuePaint)
+        canvas.drawText("Jumlah Data", col2X, infoCardY + 40f, infoLabelPaint)
+        canvas.drawText(":  ${reports.size} record", col2X + 65f, infoCardY + 40f, infoValuePaint)
+
+        yPos = infoCardY + 68f
     }
 
     fun drawSummary() {
-        val boxW = (pageW - 2 * margin - 20f) / 2f
-        val boxH = 55f
+        val boxW = (pageW - 2 * margin - 16f) / 2f
+        val boxH = 52f
         val boxY = yPos
-        val radius = 8f
 
-        val bgPaint = android.graphics.Paint().apply { color = lightGray; isAntiAlias = true }
-        val borderPaint = android.graphics.Paint().apply {
-            color = android.graphics.Color.rgb(220, 220, 230)
-            style = android.graphics.Paint.Style.STROKE
-            strokeWidth = 1f
+        fun drawStatBox(x: Float, value: String, label: String, valueColor: Int) {
+            val bgPaint = android.graphics.Paint().apply { color = statBoxBg; isAntiAlias = true }
+            val borderPaint = android.graphics.Paint().apply {
+                color = android.graphics.Color.rgb(200, 210, 230)
+                style = android.graphics.Paint.Style.STROKE; strokeWidth = 0.8f; isAntiAlias = true
+            }
+            canvas.drawRoundRect(x, boxY, x + boxW, boxY + boxH, 6f, 6f, bgPaint)
+            canvas.drawRoundRect(x, boxY, x + boxW, boxY + boxH, 6f, 6f, borderPaint)
+
+            val topAccent = android.graphics.Paint().apply { color = valueColor }
+            canvas.drawRect(x + 12f, boxY, x + 40f, boxY + 3f, topAccent)
+
+            val valPaint = android.graphics.Paint().apply {
+                textSize = 22f; typeface = boldTypeface; color = valueColor; isAntiAlias = true
+            }
+            canvas.drawText(value, x + 14f, boxY + 30f, valPaint)
+
+            canvas.drawText(label, x + 14f, boxY + 44f, statLabelPaint)
         }
 
-        // Box 1
-        canvas.drawRoundRect(margin, boxY, margin + boxW, boxY + boxH, radius, radius, bgPaint)
-        canvas.drawRoundRect(margin, boxY, margin + boxW, boxY + boxH, radius, radius, borderPaint)
-        canvas.drawText(statVal1, margin + 14f, boxY + 28f, statValPaint)
-        canvas.drawText(statLabel1, margin + 14f, boxY + 46f, statLabelPaint)
+        drawStatBox(margin, statVal1, statLabel1, primaryBlue)
+        drawStatBox(margin + boxW + 16f, statVal2, statLabel2, accentColor)
 
-        // Box 2
-        val box2X = margin + boxW + 20f
-        canvas.drawRoundRect(box2X, boxY, box2X + boxW, boxY + boxH, radius, radius, bgPaint)
-        canvas.drawRoundRect(box2X, boxY, box2X + boxW, boxY + boxH, radius, radius, borderPaint)
-        canvas.drawText(statVal2, box2X + 14f, boxY + 28f, statValPaint)
-        canvas.drawText(statLabel2, box2X + 14f, boxY + 46f, statLabelPaint)
+        yPos += boxH + 20f
+    }
 
-        yPos += boxH + 24f
+    fun drawSectionTitle(title: String) {
+        canvas.drawText(title.uppercase(), margin, yPos, sectionTitlePaint)
+        yPos += 3f
+        canvas.drawLine(margin, yPos, margin + 100f, yPos, thinLinePaint)
+        yPos += 12f
     }
 
     fun drawTableHeader() {
         val cols = listOf(
-            30f to "No",
-            250f to "Informasi",
-            130f to "Detail",
-            (pageW - 2 * margin - 30f - 250f - 130f) to "Tanggal"
+            28f to "No",
+            220f to "Informasi",
+            170f to "Detail",
+            (pageW - 2 * margin - 28f - 220f - 170f) to "Tanggal"
         )
-        val headerBg = android.graphics.Paint().apply { color = darkBg }
         val headerY = yPos
-        val rowH = 22f
+        val rowH = 20f
 
-        canvas.drawRect(margin, headerY, pageW - margin, headerY + rowH, headerBg)
-        var xOffset = margin + 6f
+        canvas.drawRoundRect(margin, headerY, pageW - margin, headerY + rowH, 4f, 4f, android.graphics.Paint().apply { color = headerBg })
+        val headerPaint = android.graphics.Paint().apply {
+            color = headerBg; isAntiAlias = true
+        }
+        canvas.drawRect(margin, headerY + 4f, pageW - margin, headerY + rowH, headerPaint)
+
+        var xOffset = margin + 8f
         for ((w, label) in cols) {
-            canvas.drawText(label, xOffset, headerY + 15f, headerCellPaint)
+            val colHeaderPaint = android.graphics.Paint().apply {
+                textSize = 9f; typeface = boldTypeface; color = white; isAntiAlias = true
+            }
+            canvas.drawText(label, xOffset, headerY + 13.5f, colHeaderPaint)
             xOffset += w
         }
-        yPos += rowH + 2f
+        yPos += rowH + 1f
     }
 
     fun drawFooter() {
-        val footerPaint = android.graphics.Paint().apply {
-            color = android.graphics.Color.rgb(200, 200, 210)
-            textSize = 8f
+        val linePaint2 = android.graphics.Paint().apply {
+            color = android.graphics.Color.rgb(200, 210, 225)
+            strokeWidth = 1f
+        }
+        canvas.drawLine(margin, pageH - 32f, pageW - margin, pageH - 32f, linePaint2)
+
+        val leftFooterPaint = android.graphics.Paint().apply {
+            textSize = 7f; typeface = regularTypeface; color = mediumGray; isAntiAlias = true
+        }
+        canvas.drawText("RentEase — Laporan Resmi Sistem", margin, pageH - 16f, leftFooterPaint)
+
+        val pagePaint = android.graphics.Paint().apply {
+            textSize = 8f; typeface = boldTypeface; color = primaryBlue; isAntiAlias = true
             textAlign = android.graphics.Paint.Align.CENTER
         }
-        val linePaint = android.graphics.Paint().apply {
-            color = android.graphics.Color.rgb(220, 220, 230)
-            strokeWidth = 0.5f
+        canvas.drawText("Halaman $pageNumber", pageW / 2f, pageH - 16f, pagePaint)
+
+        val rightFooterPaint = android.graphics.Paint().apply {
+            textSize = 7f; typeface = regularTypeface; color = mediumGray; isAntiAlias = true
+            textAlign = android.graphics.Paint.Align.RIGHT
         }
-        canvas.drawLine(margin, pageH - 30f, pageW - margin, pageH - 30f, linePaint)
-        canvas.drawText("RentEase — Laporan Sistem — Halaman $pageNumber", pageW / 2f, pageH - 14f, footerPaint)
+        canvas.drawText(dateFormat.format(Date()), pageW - margin, pageH - 16f, rightFooterPaint)
     }
 
     fun drawTableBody(): Boolean {
-        val rowH = 20f
-        val evenBg = android.graphics.Paint().apply { color = lightGray }
-        val borderPaint = android.graphics.Paint().apply {
-            color = android.graphics.Color.rgb(220, 220, 230)
-            strokeWidth = 0.5f
-        }
+        val rowH = 18f
 
         for ((index, item) in reports.withIndex()) {
             val rowY = yPos
-            if (rowY + rowH > pageH - 40f) {
+            if (rowY + rowH > pageH - 42f) {
                 drawFooter()
                 pdfDocument.finishPage(currentPage)
                 pageNumber++
@@ -727,56 +805,45 @@ private fun generateAndSavePdf(
                 canvas = currentPage.canvas
                 yPos = margin
                 drawHeader()
-                canvas.drawText("Lanjutan ...", pageW - margin - 60f, yPos - 18f, subTitlePaint)
-                drawSummary()
+                drawSectionTitle("DATA LAPORAN (Lanjutan)")
                 drawTableHeader()
-                // Re-check row after page break
-                if (yPos + rowH > pageH - 40f) return false
+                if (yPos + rowH > pageH - 42f) return false
             }
 
-            // Row background (alternating)
             if (index % 2 == 1) {
-                canvas.drawRect(margin, rowY, pageW - margin, rowY + rowH, evenBg)
+                canvas.drawRoundRect(margin, rowY, pageW - margin, rowY + rowH, 3f, 3f, android.graphics.Paint().apply {
+                    color = evenRowBg; isAntiAlias = true
+                })
             }
 
-            // Cell borders
-            canvas.drawLine(margin, rowY, pageW - margin, rowY, borderPaint)
+            canvas.drawLine(margin, rowY, pageW - margin, rowY, lightLinePaint)
 
-            // Draw cells
             val serial = "${index + 1}."
-            canvas.drawText(serial, margin + 8f, rowY + 14f, cellPaint)
+            canvas.drawText(serial, margin + 10f, rowY + 13f, cellPaint)
 
-            // Truncate text if too long
-            val titleText = if (item.title.length > 30) item.title.take(28) + ".." else item.title
-            canvas.drawText(titleText, margin + 36f, rowY + 14f, cellPaint)
+            val titleText = if (item.title.length > 35) item.title.take(33) + ".." else item.title
+            canvas.drawText(titleText, margin + 34f, rowY + 13f, cellPaint)
 
-            val subtitleText = if (item.subtitle.length > 22) item.subtitle.take(20) + ".." else item.subtitle
-            canvas.drawText(subtitleText, margin + 280f, rowY + 14f, lightCellPaint)
+            val subtitleText = if (item.subtitle.length > 28) item.subtitle.take(26) + ".." else item.subtitle
+            canvas.drawText(subtitleText, margin + 248f, rowY + 13f, lightCellPaint)
 
-            canvas.drawText(item.dateStr, pageW - margin - 100f, rowY + 14f, lightCellPaint)
+            canvas.drawText(item.dateStr, pageW - margin - 90f, rowY + 13f, lightCellPaint)
 
             yPos += rowH
         }
-        // Draw bottom border
-        canvas.drawLine(margin, yPos, pageW - margin, yPos, borderPaint)
-        yPos += 10f
+        canvas.drawLine(margin, yPos, pageW - margin, yPos, lightLinePaint)
+        yPos += 8f
         return true
     }
 
     // === BUILD PDF ===
+    drawTopBar()
     drawHeader()
-    canvas.drawText("RINGKASAN", margin, yPos, sectionPaint)
-    yPos += 4f
-    val thinLine = android.graphics.Paint().apply { color = primaryColor; strokeWidth = 1.5f }
-    canvas.drawLine(margin, yPos, margin + 120f, yPos, thinLine)
-    yPos += 14f
+
+    drawSectionTitle("Ringkasan")
     drawSummary()
 
-    canvas.drawText("DATA LAPORAN", margin, yPos, sectionPaint)
-    yPos += 4f
-    canvas.drawLine(margin, yPos, margin + 140f, yPos, thinLine)
-    yPos += 14f
-
+    drawSectionTitle("Data Laporan")
     drawTableHeader()
     drawTableBody()
     drawFooter()

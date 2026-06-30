@@ -119,44 +119,61 @@ fun ManageReturnsScreen(
         return processed
     }
 
+    fun fetchRentals() {
+        db.collection("rentals")
+            .whereIn("status", listOf(RentalRequest.STATUS_APPROVED, RentalRequest.STATUS_RETURN_PENDING))
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { documents ->
+                val raw = documents.mapNotNull { doc ->
+                    try { doc.toObject(RentalRequest::class.java).copy(id = doc.id) }
+                    catch (_: Exception) { null }
+                }
+                rentals = processRentals(raw)
+                isLoading = false
+                errorMessage = null
+            }
+            .addOnFailureListener { e ->
+                if (e.message?.contains("FAILED_PRECONDITION") == true || e.message?.contains("index") == true) {
+                    db.collection("rentals")
+                        .get()
+                        .addOnSuccessListener { documents ->
+                            val raw = documents.mapNotNull { doc ->
+                                try {
+                                    val r = doc.toObject(RentalRequest::class.java).copy(id = doc.id)
+                                    if (r.status == RentalRequest.STATUS_APPROVED || r.status == RentalRequest.STATUS_RETURN_PENDING) r else null
+                                }
+                                catch (_: Exception) { null }
+                            }.sortedByDescending { it.createdAt }
+                            rentals = processRentals(raw)
+                            isLoading = false
+                            errorMessage = null
+                        }
+                        .addOnFailureListener {
+                            errorMessage = "Gagal memuat data"
+                            isLoading = false
+                        }
+                } else {
+                    errorMessage = "Gagal memuat data: ${e.localizedMessage}"
+                    isLoading = false
+                }
+            }
+    }
+
     DisposableEffect(Unit) {
         val listener = db.collection("rentals")
-            .whereEqualTo("status", "approved")
-            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .whereEqualTo("status", RentalRequest.STATUS_APPROVED)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     if (error.message?.contains("FAILED_PRECONDITION") == true || error.message?.contains("index") == true) {
-                        db.collection("rentals")
-                            .whereEqualTo("status", "approved")
-                            .get()
-                            .addOnSuccessListener { documents ->
-                                val raw = documents.mapNotNull { doc ->
-                                    try { doc.toObject(RentalRequest::class.java).copy(id = doc.id) }
-                                    catch (_: Exception) { null }
-                                }.sortedByDescending { it.createdAt }
-                                rentals = processRentals(raw)
-                                isLoading = false
-                                errorMessage = null
-                            }
-                            .addOnFailureListener {
-                                errorMessage = "Gagal memuat data"
-                                isLoading = false
-                            }
+                        fetchRentals()
                     } else {
                         errorMessage = "Gagal memuat data: ${error.localizedMessage}"
                         isLoading = false
                     }
                     return@addSnapshotListener
                 }
-                if (snapshot != null) {
-                    val raw = snapshot.documents.mapNotNull { doc ->
-                        try { doc.toObject(RentalRequest::class.java)?.copy(id = doc.id) }
-                        catch (_: Exception) { null }
-                    }
-                    rentals = processRentals(raw)
-                    isLoading = false
-                    errorMessage = null
-                }
+                fetchRentals()
             }
         onDispose { listener.remove() }
     }
@@ -168,7 +185,7 @@ fun ManageReturnsScreen(
         val batch = db.batch()
         val rentalRef = db.collection("rentals").document(rental.id)
         val updates = hashMapOf<String, Any>(
-            "status" to "returned",
+            "status" to RentalRequest.STATUS_RETURNED,
             "actualReturnDate" to dateFormat.format(Date()),
             "isOverdue" to rental.isOverdue
         )
@@ -302,7 +319,15 @@ fun ManageReturnsScreen(
                                                 fontWeight = FontWeight.Bold,
                                                 modifier = Modifier.weight(1f)
                                             )
-                                            if (rental.isOverdue) {
+                                            if (rental.status == RentalRequest.STATUS_RETURN_PENDING) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(Primary.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                                ) {
+                                                    Text("Menunggu Verifikasi", color = Primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                                                }
+                                            } else if (rental.isOverdue) {
                                                 OverdueBadge(rental.overdueDays)
                                             }
                                         }
@@ -363,12 +388,12 @@ fun ManageReturnsScreen(
                                         Spacer(modifier = Modifier.height(8.dp))
 
                                         GlowButton(
-                                            text = "Tandai Kembali",
+                                            text = if (rental.status == RentalRequest.STATUS_RETURN_PENDING) "Verifikasi Pengembalian" else "Tandai Kembali",
                                             onClick = {
                                                 rentalToReturn = rental
                                                 showReturnDialog = true
                                             },
-                                            backgroundColor = SuccessColor
+                                            backgroundColor = if (rental.status == RentalRequest.STATUS_RETURN_PENDING) Primary else SuccessColor
                                         )
                                     }
                                 }

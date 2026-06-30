@@ -101,7 +101,7 @@ fun DashboardAdminScreen(
 
     val menus = remember {
         listOf(
-            AdminMenuItem("Cari Barang", Icons.Default.Search, Screen.BrowseItems.route, PrimaryBlue),
+            AdminMenuItem("Semua Barang", Icons.Default.Search, Screen.AllItems.route, PrimaryBlue),
             AdminMenuItem("Tambah Barang", Icons.Default.Add, Screen.AddEditItem.createRoute(fromUser = false), PrimaryBlue),
             AdminMenuItem("Kelola User", Icons.Default.Group, Screen.ManageUsers.route, PrimaryBlue),
             AdminMenuItem("Kelola Barang", Icons.Default.Inventory, Screen.ManageItems.route, WarningOrange),

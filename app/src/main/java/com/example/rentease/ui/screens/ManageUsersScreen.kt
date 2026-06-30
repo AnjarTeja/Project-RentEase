@@ -14,14 +14,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,14 +63,30 @@ fun ManageUsersScreen(
     filterStaffOnly: Boolean = false
 ) {
     val db = remember { FirebaseFirestore.getInstance() }
-    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
-    var users by remember { mutableStateOf(listOf<Map<String, Any>>()) }
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale("id", "ID")) }
+    var allUsers by remember { mutableStateOf(listOf<Map<String, Any>>()) }
+    var filteredUsers by remember { mutableStateOf(listOf<Map<String, Any>>()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var userToDelete by remember { mutableStateOf<Map<String, Any>?>(null) }
     var isDeleting by remember { mutableStateOf(false) }
     var accessError by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    fun applyFilter() {
+        val query = searchQuery.trim().lowercase()
+        val result = if (query.isEmpty()) {
+            allUsers
+        } else {
+            allUsers.filter { user ->
+                val name = (user["name"] as? String ?: "").lowercase()
+                val email = (user["email"] as? String ?: "").lowercase()
+                name.contains(query) || email.contains(query)
+            }
+        }
+        filteredUsers = result
+    }
 
     LaunchedEffect(Unit) {
         val authManager = FirebaseAuthManager()
@@ -96,13 +116,18 @@ fun ManageUsersScreen(
                     val r = it["role"] as? String ?: "user"
                     if (r != "user") 1 else 0
                 }.thenBy { (it["name"] as? String ?: "").lowercase() })
-                users = list
+                allUsers = list
+                filteredUsers = list
                 isLoading = false
             }
             .addOnFailureListener {
                 errorMessage = "Gagal memuat data pengguna"
                 isLoading = false
             }
+    }
+
+    LaunchedEffect(searchQuery) {
+        applyFilter()
     }
 
     fun deleteUser() {
@@ -113,7 +138,8 @@ fun ManageUsersScreen(
                 isDeleting = false
                 showDeleteDialog = false
                 userToDelete = null
-                users = users.filter { it["docId"] != docId }
+                allUsers = allUsers.filter { it["docId"] != docId }
+                applyFilter()
             }
             .addOnFailureListener {
                 isDeleting = false
@@ -141,78 +167,132 @@ fun ManageUsersScreen(
                     onBackClick = onBack
                 )
 
-            Text(
-                text = "${users.size} pengguna",
-                color = TextLight,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Cari nama atau email...", color = TextHint) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextHint) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Primary,
+                        unfocusedBorderColor = TextHint.copy(alpha = 0.3f),
+                        cursorColor = Primary,
+                        focusedTextColor = TextDark,
+                        unfocusedTextColor = TextDark
+                    )
+                )
 
-            Box(modifier = Modifier.weight(1f)) {
-                when {
-                    isLoading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Primary)
-                    }
-                    errorMessage != null -> {
-                        Text(
-                            text = errorMessage!!,
-                            color = ErrorColor,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    users.isEmpty() -> {
-                        Text(
-                            text = if (filterStaffOnly) "Belum ada data staff" else "Belum ada data pengguna",
-                            color = TextHint,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            items(users, key = { it["docId"] as? String ?: "" }) { user ->
-                                val name = user["name"] as? String ?: "Tanpa Nama"
-                                val email = user["email"] as? String ?: "-"
-                                val role = user["role"] as? String ?: "user"
-                                val createdAt = user["createdAt"] as? Long
+                if (searchQuery.isNotBlank()) {
+                    Text(
+                        text = "${filteredUsers.size} dari ${allUsers.size} pengguna",
+                        color = TextLight,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                } else {
+                    Text(
+                        text = "${allUsers.size} pengguna",
+                        color = TextLight,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
 
-                                GlassCard(
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                Box(modifier = Modifier.weight(1f)) {
+                    when {
+                        isLoading -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = Primary)
+                            }
+                        }
+                        errorMessage != null -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = errorMessage!!,
+                                    color = ErrorColor,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(16.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                        filteredUsers.isEmpty() -> {
+                            val msg = if (searchQuery.isNotEmpty()) {
+                                "Pengguna '$searchQuery' tidak ditemukan"
+                            } else if (filterStaffOnly) {
+                                "Belum ada data staff"
+                            } else {
+                                "Belum ada data pengguna"
+                            }
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = msg,
+                                    color = TextHint,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(16.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                items(filteredUsers, key = { it["docId"] as? String ?: "" }) { user ->
+                                    val name = user["name"] as? String ?: "Tanpa Nama"
+                                    val email = user["email"] as? String ?: "-"
+                                    val phone = user["phone"] as? String ?: ""
+                                    val role = user["role"] as? String ?: "user"
+                                    val createdAt = user["createdAt"] as? Long
+
+                                    GlassCard(
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Icon(
-                                            Icons.Default.Person,
-                                            contentDescription = null,
-                                            tint = Primary,
-                                            modifier = Modifier.padding(end = 12.dp)
-                                        )
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(text = name, style = MaterialTheme.typography.titleSmall, color = TextDark)
-                                            Text(text = email, style = MaterialTheme.typography.bodySmall, color = TextLight)
-                                            if (createdAt != null) {
-                                                Text(
-                                                    text = dateFormat.format(Date(createdAt)),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = TextHint
-                                                )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Person,
+                                                contentDescription = null,
+                                                tint = Primary,
+                                                modifier = Modifier.padding(end = 12.dp)
+                                            )
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(text = name, style = MaterialTheme.typography.titleSmall, color = TextDark)
+                                                Text(text = email, style = MaterialTheme.typography.bodySmall, color = TextLight)
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    if (phone.isNotEmpty()) {
+                                                        Text(
+                                                            text = phone,
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = TextHint,
+                                                            modifier = Modifier.padding(end = 8.dp)
+                                                        )
+                                                    }
+                                                    if (createdAt != null) {
+                                                        Text(
+                                                            text = dateFormat.format(Date(createdAt)),
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = TextHint
+                                                        )
+                                                    }
+                                                }
                                             }
-                                        }
-                                        RoleBadge(role = role, textColor = if (role == "admin") PurpleAccent else Primary)
-                                        IconButton(onClick = {
-                                            userToDelete = user
-                                            showDeleteDialog = true
-                                        }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = ErrorColor, modifier = Modifier.size(20.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            RoleBadge(role = role, textColor = if (role == "admin") PurpleAccent else Primary)
+                                            IconButton(onClick = {
+                                                userToDelete = user
+                                                showDeleteDialog = true
+                                            }) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = ErrorColor, modifier = Modifier.size(20.dp))
+                                            }
                                         }
                                     }
                                 }
@@ -222,7 +302,6 @@ fun ManageUsersScreen(
                 }
             }
         }
-    }
     }
 
     if (showDeleteDialog && userToDelete != null) {

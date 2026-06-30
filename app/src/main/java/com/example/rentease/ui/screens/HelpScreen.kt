@@ -273,7 +273,7 @@ fun HelpScreen(
                 )
 
                 GlowButton(
-                    text = if (submitting) "Mengirim..." else "Kirim Laporan",
+                    text = "Kirim Laporan",
                     onClick = {
                         if (subject.isEmpty() || message.isEmpty()) return@GlowButton
                         val uid = auth.currentUser?.uid ?: return@GlowButton
@@ -302,7 +302,8 @@ fun HelpScreen(
                             onFailure = { submitting = false }
                         )
                     },
-                    enabled = !submitting
+                    enabled = !submitting,
+                    isLoading = submitting
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -323,7 +324,7 @@ fun HelpScreen(
                             },
                             radius = 12.dp
                         ) {
-                            Column(modifier = Modifier.padding(0.dp)) {
+                            Column(modifier = Modifier.padding(12.dp)) {
                                 Text(ticket.subject, style = MaterialTheme.typography.bodyMedium, color = TextDark, fontWeight = FontWeight.Medium)
                                 Text(ticket.message, style = MaterialTheme.typography.bodySmall, color = TextLight, maxLines = 2)
                                 Row(

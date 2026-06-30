@@ -86,7 +86,7 @@ fun ItemDetailScreen(
     var rentDuration by remember { mutableStateOf("") }
     var rentNote by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
-    var userRole by remember { mutableStateOf<String?>(null) }
+    var userRole by remember { mutableStateOf(authManager.getCachedUserRole()) }
     val itemListener = remember { mutableStateOf<ListenerRegistration?>(null) }
 
     val uid = auth.currentUser?.uid
@@ -250,12 +250,14 @@ fun ItemDetailScreen(
                 title = "Detail Barang",
                 onBackClick = onBack,
                 trailingIcon = {
-                    IconButton(onClick = { toggleFavorite() }) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (isFavorite) ErrorColor else TextLight
-                        )
+                    if (userRole != FirebaseAuthManager.ROLE_PETUGAS && userRole != FirebaseAuthManager.ROLE_ADMIN) {
+                        IconButton(onClick = { toggleFavorite() }) {
+                            Icon(
+                                imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (isFavorite) ErrorColor else com.example.rentease.ui.theme.White
+                            )
+                        }
                     }
                 }
             )
@@ -339,7 +341,7 @@ fun ItemDetailScreen(
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     } else if (uid != currentItem.ownerId && userRole != FirebaseAuthManager.ROLE_PETUGAS && userRole != FirebaseAuthManager.ROLE_ADMIN) {
-                        val canRent = currentItem.status == Item.STATUS_AVAILABLE && currentItem.stock > 0
+                        val canRent = currentItem.status == Item.STATUS_AVAILABLE && currentItem.stock > 0 && currentItem.approvalStatus == Item.APPROVAL_APPROVED
                         GlowButton(
                             text = if (canRent) "Ajukan Sewa" else "Tidak Tersedia",
                             onClick = { showRentDialog = true },

@@ -2,7 +2,6 @@ package com.example.rentease.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -44,19 +41,16 @@ import com.example.rentease.FirebaseAuthManager
 import com.example.rentease.R
 import com.example.rentease.ui.components.GalaxyBackground
 import com.example.rentease.ui.components.GlassCard
+import com.example.rentease.ui.components.ExitConfirmDialog
 import com.example.rentease.ui.components.GlowButton
 import com.example.rentease.ui.theme.Primary
-import com.example.rentease.ui.theme.TechCardBg
 import com.example.rentease.ui.theme.TextDark
 import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
 import com.example.rentease.NetworkUtils
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.foundation.shape.RoundedCornerShape
-import com.example.rentease.ui.theme.ErrorColor
 
 @Composable
 fun LoginScreen(
@@ -69,10 +63,20 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
-    var showForgotPassword by remember { mutableStateOf(false) }
-    var resetEmail by remember { mutableStateOf("") }
-    var resetLoading by remember { mutableStateOf(false) }
-    var resetMessage by remember { mutableStateOf<String?>(null) }
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    BackHandler {
+        showExitDialog = true
+    }
+
+    ExitConfirmDialog(
+        show = showExitDialog,
+        onDismiss = { showExitDialog = false },
+        onConfirm = {
+            showExitDialog = false
+            (context as? android.app.Activity)?.finish()
+        }
+    )
 
     GalaxyBackground(starAlpha = 0.3f) {
         Column(
@@ -170,17 +174,10 @@ fun LoginScreen(
                         )
                     )
 
-                    TextButton(
-                        onClick = { resetEmail = email; resetMessage = null; showForgotPassword = true },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text("Lupa Kata Sandi?", color = Primary, style = MaterialTheme.typography.bodySmall)
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     GlowButton(
-                        text = if (isLoading) "Memproses..." else "Masuk",
+                        text = "Masuk",
                         onClick = {
                             if (!NetworkUtils.checkAndNotify(context)) return@GlowButton
                             if (email.isBlank() || password.isBlank()) {
@@ -190,7 +187,8 @@ fun LoginScreen(
                             isLoading = true
                             performLogin(context, authManager, email.trim(), password, onLoginSuccess, { isLoading = false })
                         },
-                        enabled = !isLoading
+                        enabled = !isLoading,
+                        isLoading = isLoading
                     )
 
                 }
@@ -215,72 +213,7 @@ fun LoginScreen(
         }
     }
 
-    if (showForgotPassword) {
-        AlertDialog(
-            onDismissRequest = { if (!resetLoading) showForgotPassword = false },
-            title = { Text("Reset Kata Sandi", color = TextDark) },
-            text = {
-                Column {
-                    Text("Masukkan email Anda untuk menerima link reset password.", color = TextLight, style = MaterialTheme.typography.bodySmall)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = resetEmail,
-                        onValueChange = { resetEmail = it },
-                        label = { Text("Email") },
-                        leadingIcon = { Icon(Icons.Default.Email, null, tint = TextHint) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Primary,
-                            unfocusedBorderColor = TextHint.copy(alpha = 0.3f),
-                            focusedLabelColor = Primary,
-                            unfocusedLabelColor = TextHint,
-                            cursorColor = Primary,
-                            focusedTextColor = TextDark,
-                            unfocusedTextColor = TextDark
-                        )
-                    )
-                    if (resetMessage != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(resetMessage!!, color = if (resetMessage!!.startsWith("Link")) Primary else ErrorColor, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (resetEmail.isBlank()) {
-                            Toast.makeText(context, "Masukkan email", Toast.LENGTH_SHORT).show()
-                            return@TextButton
-                        }
-                        resetLoading = true
-                        authManager.sendPasswordReset(
-                            email = resetEmail.trim(),
-                            onSuccess = {
-                                resetLoading = false
-                                resetMessage = "Link reset telah dikirim ke ${resetEmail.trim()}"
-                            },
-                            onFailure = { error ->
-                                resetLoading = false
-                                resetMessage = "Gagal: $error"
-                            }
-                        )
-                    },
-                    enabled = !resetLoading
-                ) {
-                    Text(if (resetLoading) "Mengirim..." else "Kirim", color = Primary)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showForgotPassword = false }) {
-                    Text("Tutup", color = TextHint)
-                }
-            },
-            containerColor = TechCardBg,
-            shape = RoundedCornerShape(16.dp)
-        )
-    }
+
 }
 
 private fun performLogin(
@@ -291,9 +224,9 @@ private fun performLogin(
     onLoginSuccess: (String) -> Unit,
     onFinishLoading: () -> Unit
 ) {
-    if (email == "admin@gmail.com") {
+    if (email.equals("admin@gmail.com", ignoreCase = true)) {
         authManager.loginOrRegisterPredefinedAccount(
-            email = email,
+            email = "admin@gmail.com",
             password = password,
             role = FirebaseAuthManager.ROLE_ADMIN,
             onSuccess = { role ->
@@ -305,9 +238,9 @@ private fun performLogin(
                 Toast.makeText(context, error, Toast.LENGTH_LONG).show()
             }
         )
-    } else if (email == "petugas@gmail.com") {
+    } else if (email.equals("petugas@gmail.com", ignoreCase = true)) {
         authManager.loginOrRegisterPredefinedAccount(
-            email = email,
+            email = "petugas@gmail.com",
             password = password,
             role = FirebaseAuthManager.ROLE_PETUGAS,
             onSuccess = { role ->

@@ -32,8 +32,6 @@ import com.example.rentease.ui.theme.Primary
 import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 
 @Composable
 fun SplashScreen(
@@ -100,11 +98,7 @@ fun SplashScreen(
                 onFailure = { onNavigateToDashboard("user") }
             )
         } else {
-            suspendCancellableCoroutine { continuation ->
-                authManager.seedPredefinedAccounts {
-                    continuation.resume(Unit)
-                }
-            }
+            authManager.seedPredefinedAccounts { }
             onNavigateToLogin()
         }
     }

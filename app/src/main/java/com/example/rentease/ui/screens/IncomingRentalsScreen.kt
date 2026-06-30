@@ -74,15 +74,15 @@ fun IncomingRentalsScreen(
     val rentalsFull = remember { mutableStateListOf<RentalRequest>() }
 
     fun applyFilter() {
-        val filter = when (selectedTabIndex) {
-            0 -> null
-            1 -> RentalRequest.STATUS_PENDING
-            2 -> RentalRequest.STATUS_APPROVED
-            else -> null
+        val filterStatuses: Set<String> = when (selectedTabIndex) {
+            0 -> emptySet()
+            1 -> setOf(RentalRequest.STATUS_PENDING)
+            2 -> setOf(RentalRequest.STATUS_APPROVED, RentalRequest.STATUS_RETURN_PENDING)
+            else -> emptySet()
         }
         isLoading = true
-        val filtered = if (filter == null) rentalsFull.toList()
-            else rentalsFull.filter { it.status == filter }
+        val filtered = if (filterStatuses.isEmpty()) rentalsFull.toList()
+            else rentalsFull.filter { it.status in filterStatuses }
         rentals.clear()
         rentals.addAll(filtered.sortedByDescending { it.createdAt })
         isLoading = false
@@ -157,6 +157,7 @@ fun IncomingRentalsScreen(
             RentalRequest.STATUS_APPROVED -> "Disetujui" to SuccessColor
             RentalRequest.STATUS_REJECTED -> "Ditolak" to ErrorColor
             RentalRequest.STATUS_RETURNED -> "Selesai" to Primary
+            RentalRequest.STATUS_RETURN_PENDING -> "Menunggu Verifikasi" to WarningColor
             else -> status to TextLight
         }
         RoleBadge(role = label, textColor = color)
@@ -259,6 +260,26 @@ fun IncomingRentalsScreen(
                                         GlowButton(
                                             text = "Tolak",
                                             onClick = { updateStatus(rental, RentalRequest.STATUS_REJECTED) },
+                                            modifier = Modifier.weight(1f),
+                                            backgroundColor = ErrorColor
+                                        )
+                                    }
+                                }
+                                if (rental.status == RentalRequest.STATUS_RETURN_PENDING) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        GlowButton(
+                                            text = "Konfirmasi Kembali",
+                                            onClick = { updateStatus(rental, RentalRequest.STATUS_RETURNED) },
+                                            modifier = Modifier.weight(1f),
+                                            backgroundColor = SuccessColor
+                                        )
+                                        GlowButton(
+                                            text = "Laporkan",
+                                            onClick = { Toast.makeText(context, "Hubungi admin untuk bantuan", Toast.LENGTH_SHORT).show() },
                                             modifier = Modifier.weight(1f),
                                             backgroundColor = ErrorColor
                                         )

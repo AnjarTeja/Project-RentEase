@@ -55,6 +55,7 @@ import com.example.rentease.ui.theme.TechCardBg
 import com.example.rentease.ui.theme.TextLight
 import com.google.firebase.firestore.FirebaseFirestore
 import coil.compose.AsyncImage
+import com.example.rentease.NetworkUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,16 +131,17 @@ fun AddEditItemScreen(
     }
 
     fun saveItem() {
-        if (name.isBlank() || price.isBlank()) {
-            errorMessage = "Nama dan Harga tidak boleh kosong"
-            return
-        }
+        if (!NetworkUtils.checkAndNotify(context)) return
+        if (name.isBlank()) { errorMessage = "Nama barang tidak boleh kosong"; return }
+        if (description.isBlank()) { errorMessage = "Deskripsi tidak boleh kosong"; return }
+        if (price.isBlank()) { errorMessage = "Harga tidak boleh kosong"; return }
         val priceVal = price.toDoubleOrNull()
-        if (priceVal == null) {
-            errorMessage = "Harga tidak valid"
-            return
+        if (priceVal == null || priceVal <= 0) { errorMessage = "Harga tidak valid"; return }
+        val stockVal = stock.toIntOrNull()
+        if (stockVal == null || stockVal < 1) { errorMessage = "Stok minimal 1"; return }
+        if (isUserMode && selectedImageUri == null && existingImageUrl.isEmpty()) {
+            errorMessage = "Silakan pilih foto barang"; return
         }
-        val stockVal = stock.toIntOrNull() ?: 1
         val statusValue = if (isUserMode) {
             Item.STATUS_AVAILABLE
         } else {
@@ -287,6 +289,7 @@ fun AddEditItemScreen(
                         label = { Text("Harga per Hari") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                         colors = textFieldColors()
                     )
 
@@ -298,6 +301,7 @@ fun AddEditItemScreen(
                         label = { Text("Stok") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                         colors = textFieldColors()
                     )
 

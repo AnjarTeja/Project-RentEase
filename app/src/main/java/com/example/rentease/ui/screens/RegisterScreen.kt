@@ -52,6 +52,7 @@ import com.example.rentease.ui.theme.TextHint
 import com.example.rentease.ui.theme.TextLight
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import com.example.rentease.NetworkUtils
 
 @Composable
 fun RegisterScreen(
@@ -77,6 +78,7 @@ fun RegisterScreen(
                 .padding(horizontal = 24.dp, vertical = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(12.dp))
             IconButton(
                 onClick = onNavigateToLogin,
                 modifier = Modifier.align(Alignment.Start)
@@ -195,8 +197,9 @@ fun RegisterScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     GlowButton(
-                        text = if (isLoading) "Mendaftarkan..." else "Daftar",
+                        text = "Daftar",
                         onClick = {
+                            if (!NetworkUtils.checkAndNotify(context)) return@GlowButton
                             when {
                                 name.isBlank() || email.isBlank() || phone.isBlank() || password.isBlank() -> {
                                     Toast.makeText(context, "Harap isi semua field", Toast.LENGTH_SHORT).show()
@@ -206,6 +209,12 @@ fun RegisterScreen(
                                 }
                                 password.length < 6 -> {
                                     Toast.makeText(context, "Kata sandi minimal 6 karakter", Toast.LENGTH_SHORT).show()
+                                }
+                                phone.trim().length < 10 -> {
+                                    Toast.makeText(context, "Nomor telepon minimal 10 digit", Toast.LENGTH_SHORT).show()
+                                }
+                                !email.trim().contains("@") -> {
+                                    Toast.makeText(context, "Format email tidak valid", Toast.LENGTH_SHORT).show()
                                 }
                                 email.trim().equals("admin@gmail.com", ignoreCase = true) ||
                                 email.trim().equals("petugas@gmail.com", ignoreCase = true) -> {
@@ -231,7 +240,8 @@ fun RegisterScreen(
                                 }
                             }
                         },
-                        enabled = !isLoading
+                        enabled = !isLoading,
+                        isLoading = isLoading
                     )
                 }
             }

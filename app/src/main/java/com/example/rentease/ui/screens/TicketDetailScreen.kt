@@ -211,7 +211,7 @@ fun TicketDetailScreen(
                         }
                     }
 
-                    if (isResolved && t.replyMessage.isNotEmpty()) {
+                    if (t.replyMessage.isNotEmpty()) {
                         GlassCard(modifier = Modifier.fillMaxWidth(), radius = 12.dp) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
@@ -257,7 +257,7 @@ fun TicketDetailScreen(
                         )
 
                         GlowButton(
-                            text = if (submitting) "Mengirim..." else "Kirim Tanggapan",
+                            text = "Kirim Tanggapan",
                             onClick = {
                                 if (replyText.isBlank()) return@GlowButton
                                 val petugasId = auth.currentUser?.uid ?: return@GlowButton
@@ -277,16 +277,18 @@ fun TicketDetailScreen(
                                     }
                                     .addOnFailureListener { submitting = false }
                             },
-                            enabled = !submitting
+                            enabled = !submitting,
+                            isLoading = submitting
                         )
 
                         Spacer(modifier = Modifier.height(4.dp))
 
                         GlowButton(
-                            text = if (isResolving) "Memproses..." else "Selesaikan",
+                            text = "Selesaikan",
                             onClick = { showResolveDialog = true },
                             backgroundColor = SuccessColor,
-                            enabled = !submitting && !isResolving
+                            enabled = !submitting && !isResolving,
+                            isLoading = isResolving
                         )
                     }
 
